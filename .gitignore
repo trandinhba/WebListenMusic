@@ -60,6 +60,9 @@ Desktop.ini
 TestResult.xml
 nunit-*.xml
 
+# Documentation folder
+Docs/
+
 # Uploads (optional - uncomment if you don't want to push uploaded files)
 # wwwroot/uploads/
 

@@ -2,8 +2,10 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using System.Text.Encodings.Web;
 using WebListenMusic.Models;
 using WebListenMusic.Models.ViewModels;
+using WebListenMusic.Services;
 
 namespace WebListenMusic.Controllers
 {
@@ -11,15 +13,18 @@ namespace WebListenMusic.Controllers
     {
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly SignInManager<ApplicationUser> _signInManager;
+        private readonly IEmailService _emailService;
         private readonly ILogger<AccountController> _logger;
 
         public AccountController(
             UserManager<ApplicationUser> userManager,
             SignInManager<ApplicationUser> signInManager,
+            IEmailService emailService,
             ILogger<AccountController> logger)
         {
             _userManager = userManager;
             _signInManager = signInManager;
+            _emailService = emailService;
             _logger = logger;
         }
 
@@ -202,6 +207,137 @@ namespace WebListenMusic.Controllers
         [HttpGet]
         [AllowAnonymous]
         public IActionResult AccessDenied()
+        {
+            return View();
+        }
+
+        #endregion
+
+        #region Forgot Password
+
+        // GET: /Account/ForgotPassword
+        [HttpGet]
+        [AllowAnonymous]
+        public IActionResult ForgotPassword()
+        {
+            return View();
+        }
+
+        // POST: /Account/ForgotPassword
+        [HttpPost]
+        [AllowAnonymous]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ForgotPassword(ForgotPasswordViewModel model)
+        {
+            if (ModelState.IsValid)
+            {
+                var user = await _userManager.FindByEmailAsync(model.Email);
+                
+                // Không tiết lộ user có tồn tại hay không vì lý do bảo mật
+                if (user == null)
+                {
+                    // Vẫn redirect đến trang confirmation để không lộ thông tin
+                    return RedirectToAction(nameof(ForgotPasswordConfirmation));
+                }
+
+                // Tạo token reset password
+                var code = await _userManager.GeneratePasswordResetTokenAsync(user);
+                
+                // Tạo link reset password
+                var callbackUrl = Url.Action(
+                    "ResetPassword",
+                    "Account",
+                    new { email = model.Email, code = code },
+                    protocol: Request.Scheme);
+
+                // Gửi email reset password
+                try
+                {
+                    await _emailService.SendPasswordResetEmailAsync(model.Email, callbackUrl!);
+                    _logger.LogInformation("Password reset email sent to {Email}", model.Email);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to send password reset email to {Email}", model.Email);
+                    // Vẫn lưu link vào TempData để hiển thị (fallback cho development)
+                    TempData["ResetLink"] = callbackUrl;
+                }
+
+                return RedirectToAction(nameof(ForgotPasswordConfirmation));
+            }
+
+            return View(model);
+        }
+
+        // GET: /Account/ForgotPasswordConfirmation
+        [HttpGet]
+        [AllowAnonymous]
+        public IActionResult ForgotPasswordConfirmation()
+        {
+            return View();
+        }
+
+        #endregion
+
+        #region Reset Password
+
+        // GET: /Account/ResetPassword
+        [HttpGet]
+        [AllowAnonymous]
+        public IActionResult ResetPassword(string? code = null, string? email = null)
+        {
+            if (code == null)
+            {
+                return BadRequest("A code must be supplied for password reset.");
+            }
+
+            var model = new ResetPasswordViewModel 
+            { 
+                Code = code,
+                Email = email ?? string.Empty
+            };
+            
+            return View(model);
+        }
+
+        // POST: /Account/ResetPassword
+        [HttpPost]
+        [AllowAnonymous]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ResetPassword(ResetPasswordViewModel model)
+        {
+            if (!ModelState.IsValid)
+            {
+                return View(model);
+            }
+
+            var user = await _userManager.FindByEmailAsync(model.Email);
+            if (user == null)
+            {
+                // Không tiết lộ user có tồn tại hay không
+                return RedirectToAction(nameof(ResetPasswordConfirmation));
+            }
+
+            var result = await _userManager.ResetPasswordAsync(user, model.Code!, model.Password);
+            
+            if (result.Succeeded)
+            {
+                _logger.LogInformation("User {Email} reset password successfully.", model.Email);
+                return RedirectToAction(nameof(ResetPasswordConfirmation));
+            }
+
+            foreach (var error in result.Errors)
+            {
+                ModelState.AddModelError(string.Empty, TranslateError(error.Code));
+            }
+
+            return View(model);
+        }
+
+        // GET: /Account/ResetPasswordConfirmation
+        [HttpGet]
+        [AllowAnonymous]
+        public IActionResult ResetPasswordConfirmation()
         {
             return View();
         }
