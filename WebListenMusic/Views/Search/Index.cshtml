@@ -1,0 +1,348 @@
+@model SearchViewModel
+@{
+    ViewData["Title"] = string.IsNullOrEmpty(Model.Query) ? "Search" : $"Results: {Model.Query}";
+}
+
+<div class="search-page">
+    <!-- Search Box -->
+    <div class="search-hero">
+        <h1>Search</h1>
+        <form method="get" class="search-form-large">
+            <div class="search-input-wrap">
+                <i class="bi bi-search"></i>
+                <input type="text" name="q" value="@Model.Query" placeholder="Songs, albums, artists, playlists..." autofocus />
+                <input type="hidden" name="type" value="@Model.Type" />
+                @if (!string.IsNullOrEmpty(Model.Query))
+                {
+                    <a href="@Url.Action("Index")" class="clear-btn">
+                        <i class="bi bi-x-lg"></i>
+                    </a>
+                }
+            </div>
+            <button type="submit" class="btn btn-primary btn-lg">Search</button>
+        </form>
+    </div>
+
+    @if (!string.IsNullOrEmpty(Model.Query))
+    {
+        <!-- Filter Tabs -->
+        <div class="search-tabs">
+            <a asp-action="Index" asp-route-q="@Model.Query" asp-route-type="all" 
+               class="search-tab @(Model.Type == "all" ? "active" : "")">All</a>
+            <a asp-action="Index" asp-route-q="@Model.Query" asp-route-type="songs" 
+               class="search-tab @(Model.Type == "songs" ? "active" : "")">Songs</a>
+            <a asp-action="Index" asp-route-q="@Model.Query" asp-route-type="albums" 
+               class="search-tab @(Model.Type == "albums" ? "active" : "")">Albums</a>
+            <a asp-action="Index" asp-route-q="@Model.Query" asp-route-type="artists" 
+               class="search-tab @(Model.Type == "artists" ? "active" : "")">Artists</a>
+            <a asp-action="Index" asp-route-q="@Model.Query" asp-route-type="playlists" 
+               class="search-tab @(Model.Type == "playlists" ? "active" : "")">Playlists</a>
+        </div>
+
+        @if (Model.HasResults)
+        {
+            <!-- Songs Results -->
+            @if (Model.Songs.Any())
+            {
+                <section class="section">
+                    <div class="section-header">
+                        <h2><i class="bi bi-music-note-list me-2"></i>Songs</h2>
+                        @if (Model.Type == "all")
+                        {
+                            <a asp-action="Index" asp-route-q="@Model.Query" asp-route-type="songs" class="btn btn-outline-primary btn-sm">
+                                View All <i class="bi bi-arrow-right ms-1"></i>
+                            </a>
+                        }
+                    </div>
+                    <div class="songs-list">
+                        @{ var index = 0; }
+                        @foreach (var song in Model.Songs)
+                        {
+                            index++;
+                            <div class="song-list-item" data-song-id="@song.Id">
+                                <div class="song-rank">@index</div>
+                                <div class="song-cover">
+                                    <img src="@(song.CoverImageUrl ?? "/uploads/covers/default-song.jpg")" alt="@song.Title" />
+                                    <button class="play-btn-sm" onclick="playSong(@song.Id)">
+                                        <i class="bi bi-play-fill"></i>
+                                    </button>
+                                </div>
+                                <div class="song-info">
+                                    <h4><a asp-controller="Songs" asp-action="Details" asp-route-id="@song.Id">@song.Title</a></h4>
+                                    <p>
+                                        @if (song.Artist != null)
+                                        {
+                                            <a asp-controller="Artists" asp-action="Details" asp-route-id="@song.ArtistId">@song.Artist.Name</a>
+                                        }
+                                    </p>
+                                </div>
+                                <div class="song-duration">@FormatDuration(song.Duration)</div>
+                                <div class="song-actions">
+                                    <button class="btn-icon" onclick="toggleLike(@song.Id)"><i class="bi bi-heart"></i></button>
+                                    <button class="btn-icon" onclick="addToPlaylist(@song.Id)"><i class="bi bi-plus-lg"></i></button>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </section>
+            }
+
+            <!-- Artists Results -->
+            @if (Model.Artists.Any())
+            {
+                <section class="section">
+                    <div class="section-header">
+                        <h2><i class="bi bi-person-fill me-2"></i>Artists</h2>
+                        @if (Model.Type == "all")
+                        {
+                            <a asp-action="Index" asp-route-q="@Model.Query" asp-route-type="artists" class="btn btn-outline-primary btn-sm">
+                                View All <i class="bi bi-arrow-right ms-1"></i>
+                            </a>
+                        }
+                    </div>
+                    <div class="artists-grid">
+                        @foreach (var artist in Model.Artists)
+                        {
+                            <a asp-controller="Artists" asp-action="Details" asp-route-id="@artist.Id" class="artist-card">
+                                <div class="artist-avatar">
+                                    <img src="@(artist.ImageUrl ?? "/uploads/artists/default-artist.jpg")" alt="@artist.Name" loading="lazy" />
+                                    @if (artist.IsVerified)
+                                    {
+                                        <span class="verified-badge" title="Verified Artist">
+                                            <i class="bi bi-patch-check-fill"></i>
+                                        </span>
+                                    }
+                                </div>
+                                <h4>@artist.Name</h4>
+                                <p>@artist.Songs?.Count() songs</p>
+                            </a>
+                        }
+                    </div>
+                </section>
+            }
+
+            <!-- Albums Results -->
+            @if (Model.Albums.Any())
+            {
+                <section class="section">
+                    <div class="section-header">
+                        <h2><i class="bi bi-disc-fill me-2"></i>Albums</h2>
+                        @if (Model.Type == "all")
+                        {
+                            <a asp-action="Index" asp-route-q="@Model.Query" asp-route-type="albums" class="btn btn-outline-primary btn-sm">
+                                View All <i class="bi bi-arrow-right ms-1"></i>
+                            </a>
+                        }
+                    </div>
+                    <div class="albums-grid">
+                        @foreach (var album in Model.Albums)
+                        {
+                            <a asp-controller="Albums" asp-action="Details" asp-route-id="@album.Id" class="album-card">
+                                <div class="album-cover">
+                                    <img src="@(album.CoverImageUrl ?? "/uploads/albums/default-album.jpg")" alt="@album.Title" loading="lazy" />
+                                    <div class="album-overlay">
+                                        <button class="play-btn" onclick="event.preventDefault(); playAlbum(@album.Id);">
+                                            <i class="bi bi-play-fill"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="album-info">
+                                    <h4>@album.Title</h4>
+                                    <p>@(album.Artist?.Name ?? "Various Artists")</p>
+                                </div>
+                            </a>
+                        }
+                    </div>
+                </section>
+            }
+
+            <!-- Playlists Results -->
+            @if (Model.Playlists.Any())
+            {
+                <section class="section">
+                    <div class="section-header">
+                        <h2><i class="bi bi-collection-play-fill me-2"></i>Playlists</h2>
+                        @if (Model.Type == "all")
+                        {
+                            <a asp-action="Index" asp-route-q="@Model.Query" asp-route-type="playlists" class="btn btn-outline-primary btn-sm">
+                                View All <i class="bi bi-arrow-right ms-1"></i>
+                            </a>
+                        }
+                    </div>
+                    <div class="albums-grid">
+                        @foreach (var playlist in Model.Playlists)
+                        {
+                            var cover = playlist.CoverImageUrl ?? playlist.PlaylistSongs?.FirstOrDefault()?.Song?.CoverImageUrl;
+                            <a asp-controller="Playlists" asp-action="Details" asp-route-id="@playlist.Id" class="album-card">
+                                <div class="album-cover">
+                                    @if (!string.IsNullOrEmpty(cover))
+                                    {
+                                        <img src="@cover" alt="@playlist.Name" loading="lazy" />
+                                    }
+                                    else
+                                    {
+                                        <div class="playlist-cover-default" style="height: 100%; display: flex; align-items: center; justify-content: center; background: var(--ml-gradient-primary);">
+                                            <i class="bi bi-music-note-list" style="font-size: 3rem; opacity: 0.5;"></i>
+                                        </div>
+                                    }
+                                    <div class="album-overlay">
+                                        <button class="play-btn" onclick="event.preventDefault(); playPlaylist(@playlist.Id);">
+                                            <i class="bi bi-play-fill"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="album-info">
+                                    <h4>@playlist.Name</h4>
+                                    <p>@(playlist.User?.DisplayName ?? "User")</p>
+                                </div>
+                            </a>
+                        }
+                    </div>
+                </section>
+            }
+        }
+        else
+        {
+            <div class="empty-state">
+                <i class="bi bi-search"></i>
+                <h3>No Results Found</h3>
+                <p>Try searching with different keywords</p>
+            </div>
+        }
+    }
+    else
+    {
+        <div class="search-suggestions">
+            <h3>Search Suggestions</h3>
+            <div class="suggestion-tags">
+                <a href="?q=pop" class="suggestion-tag">Pop</a>
+                <a href="?q=rock" class="suggestion-tag">Rock</a>
+                <a href="?q=ballad" class="suggestion-tag">Ballad</a>
+                <a href="?q=edm" class="suggestion-tag">EDM</a>
+                <a href="?q=r&b" class="suggestion-tag">R&B</a>
+                <a href="?q=hip hop" class="suggestion-tag">Hip Hop</a>
+            </div>
+        </div>
+    }
+</div>
+
+<style>
+    .search-hero {
+        text-align: center;
+        padding: 40px 0;
+        margin-bottom: 32px;
+    }
+    
+    .search-hero h1 {
+        font-size: 2.5rem;
+        margin-bottom: 24px;
+    }
+    
+    .search-form-large {
+        display: flex;
+        gap: 16px;
+        max-width: 700px;
+        margin: 0 auto;
+    }
+    
+    .search-input-wrap {
+        flex: 1;
+        position: relative;
+        display: flex;
+        align-items: center;
+    }
+    
+    .search-input-wrap i {
+        position: absolute;
+        left: 20px;
+        color: var(--ml-text-muted);
+        font-size: 1.25rem;
+    }
+    
+    .search-input-wrap input {
+        width: 100%;
+        padding: 16px 48px 16px 56px;
+        background: var(--ml-surface);
+        border: 2px solid var(--ml-border);
+        border-radius: var(--ml-radius-full);
+        color: var(--ml-text);
+        font-size: 1.125rem;
+        transition: var(--ml-transition);
+    }
+    
+    .search-input-wrap input:focus {
+        outline: none;
+        border-color: var(--ml-primary);
+    }
+    
+    .clear-btn {
+        position: absolute;
+        right: 16px;
+        color: var(--ml-text-muted);
+    }
+    
+    .search-tabs {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 32px;
+        border-bottom: 1px solid var(--ml-border);
+        padding-bottom: 16px;
+    }
+    
+    .search-tab {
+        padding: 8px 20px;
+        border-radius: var(--ml-radius-full);
+        color: var(--ml-text-muted);
+        text-decoration: none;
+        transition: var(--ml-transition);
+    }
+    
+    .search-tab:hover {
+        color: var(--ml-text);
+        background: var(--ml-surface);
+    }
+    
+    .search-tab.active {
+        background: var(--ml-primary);
+        color: white;
+    }
+    
+    .search-suggestions {
+        text-align: center;
+        padding: 40px 0;
+    }
+    
+    .search-suggestions h3 {
+        color: var(--ml-text-muted);
+        margin-bottom: 24px;
+    }
+    
+    .suggestion-tags {
+        display: flex;
+        gap: 12px;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+    
+    .suggestion-tag {
+        padding: 10px 24px;
+        background: var(--ml-surface);
+        border-radius: var(--ml-radius-full);
+        color: var(--ml-text);
+        text-decoration: none;
+        transition: var(--ml-transition);
+    }
+    
+    .suggestion-tag:hover {
+        background: var(--ml-primary);
+        color: white;
+    }
+</style>
+
+@functions {
+    string FormatDuration(int seconds)
+    {
+        var span = TimeSpan.FromSeconds(seconds);
+        return span.Hours > 0 ? span.ToString(@"h\:mm\:ss") : span.ToString(@"m\:ss");
+    }
+}

@@ -1,0 +1,154 @@
+@model IEnumerable<Genre>
+@{
+    ViewData["Title"] = "Genre Management";
+}
+
+<div class="page-header">
+    <div>
+        <h1>@ViewData["Title"]</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a asp-action="Index" asp-controller="Dashboard">Dashboard</a></li>
+                <li class="breadcrumb-item active">Genres</li>
+            </ol>
+        </nav>
+    </div>
+    <div>
+        <a asp-action="Create" class="btn btn-primary">
+            <i class="bi bi-plus-lg me-2"></i>Add Genre
+        </a>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-6">
+                <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    <input type="text" name="search" value="@ViewBag.Search" class="form-control" placeholder="Search by name..." />
+                </div>
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="bi bi-search me-2"></i>Search
+                </button>
+            </div>
+            <div class="col-md-3">
+                <a asp-action="Index" class="btn btn-outline-secondary w-100">
+                    <i class="bi bi-x-lg me-2"></i>Clear Filter
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Results Info -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <span class="text-muted">Found @ViewBag.TotalItems genres</span>
+</div>
+
+<!-- Genres Table -->
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th style="width: 50px;">#</th>
+                    <th>Genre Name</th>
+                    <th>Color</th>
+                    <th>Description</th>
+                    <th class="text-center">Song Count</th>
+                    <th>Created Date</th>
+                    <th style="width: 120px;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.Any())
+                {
+                    var index = (ViewBag.CurrentPage - 1) * 15;
+                    @foreach (var genre in Model)
+                    {
+                        index++;
+                        <tr>
+                            <td>@index</td>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="genre-color-dot" style="background-color: @(genre.Color ?? "#1f6feb"); width: 12px; height: 12px; border-radius: 50%; display: inline-block;"></span>
+                                    <strong>@genre.Name</strong>
+                                </div>
+                            </td>
+                            <td>
+                                <code style="background-color: @(genre.Color ?? "#1f6feb"); color: white; padding: 2px 8px; border-radius: 4px;">
+                                    @(genre.Color ?? "#1f6feb")
+                                </code>
+                            </td>
+                            <td>
+                                <span class="text-muted" title="@genre.Description">
+                                    @(genre.Description?.Length > 50 ? genre.Description.Substring(0, 50) + "..." : genre.Description ?? "-")
+                                </span>
+                            </td>
+                            <td class="text-center">
+                                <span class="badge bg-secondary">@genre.Songs.Count</span>
+                            </td>
+                            <td>@genre.CreatedAt.ToString("dd/MM/yyyy")</td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <a asp-action="Details" asp-route-id="@genre.Id" class="btn btn-outline-info" title="Details">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <a asp-action="Edit" asp-route-id="@genre.Id" class="btn btn-outline-primary" title="Edit">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <a asp-action="Delete" asp-route-id="@genre.Id" class="btn btn-outline-danger" title="Delete">
+                                        <i class="bi bi-trash"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="7" class="text-center py-5">
+                            <div class="empty-state">
+                                <i class="bi bi-tags text-muted" style="font-size: 3rem;"></i>
+                                <p class="text-muted mt-3">No genres found.</p>
+                                <a asp-action="Create" class="btn btn-primary">
+                                    <i class="bi bi-plus-lg me-2"></i>Add First Genre
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Pagination -->
+@if (ViewBag.TotalPages > 1)
+{
+    <nav class="mt-4">
+        <ul class="pagination justify-content-center">
+            <li class="page-item @(ViewBag.CurrentPage == 1 ? "disabled" : "")">
+                <a class="page-link" asp-action="Index" asp-route-page="@(ViewBag.CurrentPage - 1)" asp-route-search="@ViewBag.Search">
+                    <i class="bi bi-chevron-left"></i>
+                </a>
+            </li>
+            @for (int i = 1; i <= ViewBag.TotalPages; i++)
+            {
+                <li class="page-item @(ViewBag.CurrentPage == i ? "active" : "")">
+                    <a class="page-link" asp-action="Index" asp-route-page="@i" asp-route-search="@ViewBag.Search">@i</a>
+                </li>
+            }
+            <li class="page-item @(ViewBag.CurrentPage == ViewBag.TotalPages ? "disabled" : "")">
+                <a class="page-link" asp-action="Index" asp-route-page="@(ViewBag.CurrentPage + 1)" asp-route-search="@ViewBag.Search">
+                    <i class="bi bi-chevron-right"></i>
+                </a>
+            </li>
+        </ul>
+    </nav>
+}

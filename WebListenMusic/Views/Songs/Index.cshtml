@@ -1,0 +1,220 @@
+@model SongsViewModel
+@{
+    ViewData["Title"] = "Songs";
+}
+
+<div class="page-header-customer">
+    <div>
+        <h1>
+            @if (!string.IsNullOrEmpty(Model.SelectedGenreName))
+            {
+                <span>Genre: @Model.SelectedGenreName</span>
+            }
+            else if (!string.IsNullOrEmpty(Model.SelectedArtistName))
+            {
+                <span>Artist: @Model.SelectedArtistName</span>
+            }
+            else if (!string.IsNullOrEmpty(Model.Search))
+            {
+                <span>Results: "@Model.Search"</span>
+            }
+            else
+            {
+                <span>All Songs</span>
+            }
+        </h1>
+        <p class="text-muted">@Model.TotalItems songs</p>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="filters-bar">
+    <form method="get" class="filters-form">
+        <div class="search-box">
+            <i class="bi bi-search"></i>
+            <input type="text" name="search" value="@Model.Search" placeholder="Search songs, artists..." class="form-control" />
+        </div>
+        
+        <select name="genre" class="form-select" onchange="this.form.submit()">
+            <option value="">All genres</option>
+            @foreach (var genre in Model.Genres)
+            {
+                <option value="@genre.Id" selected="@(Model.GenreId == genre.Id)">@genre.Name</option>
+            }
+        </select>
+        
+        <select name="sort" class="form-select" onchange="this.form.submit()">
+            <option value="newest" selected="@(Model.Sort == "newest")">Newest</option>
+            <option value="trending" selected="@(Model.Sort == "trending")">Trending</option>
+            <option value="popular" selected="@(Model.Sort == "popular")">Most Popular</option>
+            <option value="oldest" selected="@(Model.Sort == "oldest")">Oldest</option>
+            <option value="title" selected="@(Model.Sort == "title")">By Title</option>
+        </select>
+        
+        @if (Model.ArtistId.HasValue)
+        {
+            <input type="hidden" name="artist" value="@Model.ArtistId" />
+        }
+        
+        <button type="submit" class="btn btn-primary">
+            <i class="bi bi-search"></i>
+        </button>
+        
+        @if (!string.IsNullOrEmpty(Model.Search) || Model.GenreId.HasValue || Model.ArtistId.HasValue)
+        {
+            <a asp-action="Index" class="btn btn-outline-secondary">
+                <i class="bi bi-x-lg"></i> Clear filters
+            </a>
+        }
+    </form>
+</div>
+
+<!-- Play All Button -->
+@if (Model.Songs.Any())
+{
+    <div class="action-bar">
+        <button class="btn btn-primary btn-lg" onclick="playAllSongs()">
+            <i class="bi bi-play-fill me-2"></i>Play All
+        </button>
+        <button class="btn btn-outline-primary" onclick="shufflePlay()">
+            <i class="bi bi-shuffle me-2"></i>Shuffle
+        </button>
+    </div>
+}
+
+<!-- Songs Grid -->
+@if (Model.Songs.Any())
+{
+    <div class="songs-grid">
+        @foreach (var song in Model.Songs)
+        {
+            <div class="song-card" data-song-id="@song.Id">
+                <div class="song-card-cover">
+                    <img src="@(song.CoverImageUrl ?? "/uploads/covers/default-song.jpg")" alt="@song.Title" loading="lazy" />
+                    <div class="song-card-overlay">
+                        <button class="play-btn" onclick="playSong(@song.Id)">
+                            <i class="bi bi-play-fill"></i>
+                        </button>
+                    </div>
+                    @if (song.IsFeatured)
+                    {
+                        <span class="song-badge featured">
+                            <i class="bi bi-star-fill"></i>
+                        </span>
+                    }
+                </div>
+                <div class="song-card-info">
+                    <h4 class="song-title">
+                        <a asp-action="Details" asp-route-id="@song.Id">@song.Title</a>
+                    </h4>
+                    <p class="song-artist">
+                        @if (song.Artist != null)
+                        {
+                            <a asp-controller="Artists" asp-action="Details" asp-route-id="@song.ArtistId">@song.Artist.Name</a>
+                        }
+                        else
+                        {
+                            <span>Unknown Artist</span>
+                        }
+                    </p>
+                    <div class="song-meta">
+                        <span><i class="bi bi-play-circle"></i> @FormatNumber(song.PlayCount)</span>
+                        <span><i class="bi bi-clock"></i> @FormatDuration(song.Duration)</span>
+                    </div>
+                </div>
+                <div class="song-card-actions">
+                    <button class="btn-icon" onclick="toggleLike(@song.Id)" title="Favorite">
+                        <i class="bi bi-heart"></i>
+                    </button>
+                    <button class="btn-icon" onclick="addToPlaylist(@song.Id)" title="Add to playlist">
+                        <i class="bi bi-plus-lg"></i>
+                    </button>
+                    <div class="dropdown">
+                        <button class="btn-icon" data-bs-toggle="dropdown">
+                            <i class="bi bi-three-dots"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end">
+                            <li><a class="dropdown-item" href="#" onclick="playSong(@song.Id)"><i class="bi bi-play"></i> Play</a></li>
+                            <li><a class="dropdown-item" href="#" onclick="playNext(@song.Id)"><i class="bi bi-skip-end"></i> Play Next</a></li>
+                            <li><a class="dropdown-item" href="#" onclick="addToQueue(@song.Id)"><i class="bi bi-list-ul"></i> Add to Queue</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" asp-action="Details" asp-route-id="@song.Id"><i class="bi bi-info-circle"></i> Details</a></li>
+                            @if (song.Artist != null)
+                            {
+                                <li><a class="dropdown-item" asp-controller="Artists" asp-action="Details" asp-route-id="@song.ArtistId"><i class="bi bi-person"></i> View Artist</a></li>
+                            }
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    <!-- Pagination -->
+    @if (Model.TotalPages > 1)
+    {
+        <nav class="pagination-nav">
+            <ul class="pagination justify-content-center">
+                <li class="page-item @(Model.CurrentPage == 1 ? "disabled" : "")">
+                    <a class="page-link" asp-action="Index" asp-route-search="@Model.Search" asp-route-genre="@Model.GenreId" asp-route-artist="@Model.ArtistId" asp-route-sort="@Model.Sort" asp-route-page="@(Model.CurrentPage - 1)">
+                        <i class="bi bi-chevron-left"></i>
+                    </a>
+                </li>
+                @for (var i = Math.Max(1, Model.CurrentPage - 2); i <= Math.Min(Model.TotalPages, Model.CurrentPage + 2); i++)
+                {
+                    <li class="page-item @(i == Model.CurrentPage ? "active" : "")">
+                        <a class="page-link" asp-action="Index" asp-route-search="@Model.Search" asp-route-genre="@Model.GenreId" asp-route-artist="@Model.ArtistId" asp-route-sort="@Model.Sort" asp-route-page="@i">@i</a>
+                    </li>
+                }
+                <li class="page-item @(Model.CurrentPage == Model.TotalPages ? "disabled" : "")">
+                    <a class="page-link" asp-action="Index" asp-route-search="@Model.Search" asp-route-genre="@Model.GenreId" asp-route-artist="@Model.ArtistId" asp-route-sort="@Model.Sort" asp-route-page="@(Model.CurrentPage + 1)">
+                        <i class="bi bi-chevron-right"></i>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+    }
+}
+else
+{
+    <div class="empty-state">
+        <i class="bi bi-music-note-list"></i>
+        <h3>No songs found</h3>
+        <p>Try changing search keywords or filters</p>
+        <a asp-action="Index" class="btn btn-primary">View All</a>
+    </div>
+}
+
+@section Scripts {
+    <script>
+        const songIds = [@Html.Raw(string.Join(",", Model.Songs.Select(s => s.Id)))];
+        
+        function playAllSongs() {
+            if (songIds.length > 0) {
+                playMultipleSongs(songIds);
+            }
+        }
+        
+        function shufflePlay() {
+            if (songIds.length > 0) {
+                const shuffled = [...songIds].sort(() => Math.random() - 0.5);
+                playMultipleSongs(shuffled);
+            }
+        }
+    </script>
+}
+
+@functions {
+    string FormatDuration(int seconds)
+    {
+        var span = TimeSpan.FromSeconds(seconds);
+        return span.Hours > 0 ? span.ToString(@"h\:mm\:ss") : span.ToString(@"m\:ss");
+    }
+    
+    string FormatNumber(int number)
+    {
+        if (number >= 1000000) return (number / 1000000.0).ToString("0.#") + "M";
+        if (number >= 1000) return (number / 1000.0).ToString("0.#") + "K";
+        return number.ToString();
+    }
+}

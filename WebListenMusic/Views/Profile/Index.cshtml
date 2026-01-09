@@ -1,0 +1,250 @@
+@model ProfileViewModel
+@{
+    ViewData["Title"] = Model.User.DisplayName ?? "Profile";
+}
+
+<div class="profile-page">
+    <!-- Profile Header -->
+    <div class="profile-header">
+        <div class="profile-avatar">
+            <img src="@(Model.User.AvatarUrl ?? "/uploads/avatars/default.jpg")" alt="@Model.User.DisplayName" />
+            @if (Model.User.IsPremium)
+            {
+                <span class="premium-badge" title="Premium">
+                    <i class="bi bi-gem"></i>
+                </span>
+            }
+        </div>
+        <div class="profile-info">
+            <span class="profile-type">Profile</span>
+            <h1>@(Model.User.DisplayName ?? "User")</h1>
+            @if (!string.IsNullOrEmpty(Model.User.Bio))
+            {
+                <p class="profile-bio">@Model.User.Bio</p>
+            }
+            <div class="profile-stats">
+                <span>@Model.TotalPlaylists playlists</span>
+                @if (Model.User.CreatedAt != default)
+                {
+                    <span class="separator">•</span>
+                    <span>Joined @Model.User.CreatedAt.ToString("MM/yyyy")</span>
+                }
+            </div>
+            @if (Model.IsOwnProfile)
+            {
+                <div class="profile-actions">
+                    <a asp-action="Edit" class="btn btn-outline-light">
+                        <i class="bi bi-pencil me-2"></i>Edit Profile
+                    </a>
+                    <a asp-action="Settings" class="btn btn-outline-light">
+                        <i class="bi bi-gear me-2"></i>Settings
+                    </a>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Quick Links (Own Profile) -->
+    @if (Model.IsOwnProfile)
+    {
+        <div class="quick-links">
+            <a asp-action="Favorites" class="quick-link-card">
+                <i class="bi bi-heart-fill"></i>
+                <span>Favorite Songs</span>
+            </a>
+            <a asp-action="History" class="quick-link-card">
+                <i class="bi bi-clock-history"></i>
+                <span>Listening History</span>
+            </a>
+            <a asp-controller="Playlists" asp-action="Create" class="quick-link-card">
+                <i class="bi bi-plus-lg"></i>
+                <span>Create Playlist</span>
+            </a>
+        </div>
+    }
+
+    <!-- Playlists -->
+    @if (Model.Playlists.Any())
+    {
+        <section class="section">
+            <div class="section-header">
+                <h2>@(Model.IsOwnProfile ? "Your Playlists" : "Playlists")</h2>
+                @if (Model.TotalPlaylists > 6)
+                {
+                    <a asp-controller="Playlists" asp-action="Index" class="btn btn-outline-primary btn-sm">
+                        View All <i class="bi bi-arrow-right ms-1"></i>
+                    </a>
+                }
+            </div>
+            <div class="albums-grid">
+                @foreach (var playlist in Model.Playlists)
+                {
+                    var cover = playlist.CoverImageUrl ?? playlist.PlaylistSongs?.FirstOrDefault()?.Song?.CoverImageUrl;
+                    <a asp-controller="Playlists" asp-action="Details" asp-route-id="@playlist.Id" class="album-card">
+                        <div class="album-cover">
+                            @if (!string.IsNullOrEmpty(cover))
+                            {
+                                <img src="@cover" alt="@playlist.Name" loading="lazy" />
+                            }
+                            else
+                            {
+                                <div class="playlist-cover-default" style="height: 100%; display: flex; align-items: center; justify-content: center; background: var(--ml-gradient-primary);">
+                                    <i class="bi bi-music-note-list" style="font-size: 3rem; opacity: 0.5;"></i>
+                                </div>
+                            }
+                            @if (!playlist.IsPublic)
+                            {
+                                <span class="playlist-badge private" style="position: absolute; top: 8px; right: 8px; background: var(--ml-surface); padding: 4px 8px; border-radius: 4px;">
+                                    <i class="bi bi-lock-fill"></i>
+                                </span>
+                            }
+                        </div>
+                        <div class="album-info">
+                            <h4>@playlist.Name</h4>
+                            <p>@playlist.PlaylistSongs?.Count() songs</p>
+                        </div>
+                    </a>
+                }
+            </div>
+        </section>
+    }
+    else if (Model.IsOwnProfile)
+    {
+        <div class="empty-state">
+            <i class="bi bi-collection-play"></i>
+            <h3>No Playlists Yet</h3>
+            <p>Create your first playlist now!</p>
+            <a asp-controller="Playlists" asp-action="Create" class="btn btn-primary">Create Playlist</a>
+        </div>
+    }
+</div>
+
+<style>
+    .profile-header {
+        display: flex;
+        gap: 32px;
+        align-items: flex-end;
+        margin-bottom: 40px;
+        padding-bottom: 32px;
+        border-bottom: 1px solid var(--ml-border);
+    }
+    
+    .profile-avatar {
+        position: relative;
+        width: 200px;
+        height: 200px;
+        flex-shrink: 0;
+    }
+    
+    .profile-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: 50%;
+        box-shadow: var(--ml-shadow-lg);
+    }
+    
+    .premium-badge {
+        position: absolute;
+        bottom: 8px;
+        right: 8px;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
+        border-radius: 50%;
+        color: white;
+        font-size: 1.25rem;
+    }
+    
+    .profile-info {
+        flex: 1;
+    }
+    
+    .profile-type {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        font-weight: 600;
+        color: var(--ml-text-muted);
+    }
+    
+    .profile-info h1 {
+        font-size: 3rem;
+        font-weight: 700;
+        margin: 8px 0 16px;
+    }
+    
+    .profile-bio {
+        color: var(--ml-text-muted);
+        margin-bottom: 16px;
+        max-width: 600px;
+    }
+    
+    .profile-stats {
+        display: flex;
+        gap: 8px;
+        color: var(--ml-text-muted);
+        margin-bottom: 24px;
+    }
+    
+    .profile-actions {
+        display: flex;
+        gap: 12px;
+    }
+    
+    .quick-links {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+        margin-bottom: 40px;
+    }
+    
+    .quick-link-card {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 20px;
+        background: var(--ml-surface);
+        border-radius: var(--ml-radius-lg);
+        color: var(--ml-text);
+        text-decoration: none;
+        transition: var(--ml-transition);
+    }
+    
+    .quick-link-card:hover {
+        background: var(--ml-surface-hover);
+        transform: translateY(-2px);
+    }
+    
+    .quick-link-card i {
+        font-size: 1.5rem;
+        color: var(--ml-primary);
+    }
+    
+    .quick-link-card span {
+        font-weight: 500;
+    }
+    
+    @@media (max-width: 768px) {
+        .profile-header {
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+        
+        .profile-avatar {
+            width: 150px;
+            height: 150px;
+        }
+        
+        .profile-info h1 {
+            font-size: 2rem;
+        }
+        
+        .profile-stats, .profile-actions {
+            justify-content: center;
+        }
+    }
+</style>

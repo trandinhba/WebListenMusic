@@ -1,0 +1,342 @@
+@model List<ListeningHistory>
+@{
+    ViewData["Title"] = "Listening History";
+    var currentPage = ViewBag.CurrentPage ?? 1;
+    var totalPages = ViewBag.TotalPages ?? 1;
+    var totalItems = ViewBag.TotalItems ?? 0;
+    
+    string FormatDuration(int seconds)
+    {
+        var mins = seconds / 60;
+        var secs = seconds % 60;
+        return $"{mins}:{secs:D2}";
+    }
+    
+    string FormatNumber(int number)
+    {
+        if (number >= 1000000) return $"{number / 1000000.0:F1}M";
+        if (number >= 1000) return $"{number / 1000.0:F1}K";
+        return number.ToString();
+    }
+}
+
+<div class="page-header-customer">
+    <div>
+        <h1><i class="bi bi-clock-history me-2"></i>Listening History</h1>
+        <p class="text-muted">@totalItems songs you've recently listened to</p>
+    </div>
+    @if (Model.Any())
+    {
+        <div class="d-flex gap-2">
+            <button class="btn btn-primary" onclick="playAllHistory()">
+                <i class="bi bi-play-fill me-2"></i>Play All
+            </button>
+            <button class="btn btn-outline-light" onclick="shuffleHistory()">
+                <i class="bi bi-shuffle me-2"></i>Shuffle
+            </button>
+            <form asp-action="ClearHistory" method="post" class="d-inline" onsubmit="return confirm('Are you sure you want to clear all listening history?');">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-outline-danger">
+                    <i class="bi bi-trash me-2"></i>Clear History
+                </button>
+            </form>
+        </div>
+    }
+</div>
+
+@if (!Model.Any())
+{
+    <div class="empty-state">
+        <i class="bi bi-clock-history"></i>
+        <h3>No Listening History</h3>
+        <p>Start listening to music to see your history here</p>
+        <a asp-controller="Songs" asp-action="Index" class="btn btn-primary">Explore Songs</a>
+    </div>
+}
+else
+{
+    <div class="song-list">
+        @{ var rank = (currentPage - 1) * 20; }
+        @foreach (var history in Model)
+        {
+            rank++;
+            var song = history.Song;
+            if (song == null) continue;
+            
+            <div class="song-list-item" data-song-id="@song.Id">
+                <div class="song-list-rank">@rank</div>
+                <div class="song-list-cover">
+                    <img src="@(song.CoverImageUrl ?? "/images/default-song.svg")" alt="@song.Title" onerror="this.src='/images/default-song.svg';" />
+                    <button class="play-btn-sm" onclick="playSong(@song.Id)">
+                        <i class="bi bi-play-fill"></i>
+                    </button>
+                </div>
+                <div class="song-list-info">
+                    <h4>
+                        <a asp-controller="Songs" asp-action="Details" asp-route-id="@song.Id">@song.Title</a>
+                    </h4>
+                    <p>
+                        @if (song.Artist != null)
+                        {
+                            <a asp-controller="Artists" asp-action="Details" asp-route-id="@song.ArtistId">@song.Artist.Name</a>
+                        }
+                        else
+                        {
+                            <span>Unknown Artist</span>
+                        }
+                    </p>
+                </div>
+                <div class="song-list-time text-muted">
+                    <i class="bi bi-clock me-1"></i>
+                    @history.ListenedAt.ToString("dd/MM/yyyy HH:mm")
+                </div>
+                <div class="song-list-stats">
+                    <span><i class="bi bi-play-circle"></i> @FormatNumber(song.PlayCount)</span>
+                </div>
+                <div class="song-list-duration">@FormatDuration(song.Duration)</div>
+                <div class="song-list-actions">
+                    <button class="btn-icon" onclick="toggleFavoriteHistory(@song.Id, this)" title="Favorite">
+                        <i class="bi bi-heart"></i>
+                    </button>
+                    <button class="btn-icon" onclick="addToPlaylist(@song.Id)" title="Add to playlist">
+                        <i class="bi bi-plus-circle"></i>
+                    </button>
+                    <div class="dropdown d-inline-block">
+                        <button class="btn-icon" data-bs-toggle="dropdown">
+                            <i class="bi bi-three-dots"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end">
+                            <li><a class="dropdown-item" href="#" onclick="addToQueue(@song.Id)"><i class="bi bi-list-ul me-2"></i>Add to Queue</a></li>
+                            @if (!string.IsNullOrEmpty(song.AudioUrl))
+                            {
+                                <li><a class="dropdown-item" asp-controller="Songs" asp-action="Download" asp-route-id="@song.Id"><i class="bi bi-download me-2"></i>Download</a></li>
+                            }
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" asp-controller="Songs" asp-action="Details" asp-route-id="@song.Id"><i class="bi bi-info-circle me-2"></i>View Details</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+    
+    @* Pagination *@
+    @if (totalPages > 1)
+    {
+        <nav class="mt-4">
+            <ul class="pagination justify-content-center">
+                <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                    <a class="page-link" asp-action="History" asp-route-page="@(currentPage - 1)">
+                        <i class="bi bi-chevron-left"></i>
+                    </a>
+                </li>
+                @for (int i = 1; i <= totalPages; i++)
+                {
+                    <li class="page-item @(i == currentPage ? "active" : "")">
+                        <a class="page-link" asp-action="History" asp-route-page="@i">@i</a>
+                    </li>
+                }
+                <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                    <a class="page-link" asp-action="History" asp-route-page="@(currentPage + 1)">
+                        <i class="bi bi-chevron-right"></i>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+    }
+}
+
+<style>
+    .song-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .song-list-item {
+        display: grid;
+        grid-template-columns: 40px 56px 1fr auto auto auto auto;
+        gap: 16px;
+        align-items: center;
+        padding: 12px 16px;
+        background: var(--ml-surface);
+        border-radius: var(--ml-radius);
+        transition: var(--ml-transition);
+    }
+    
+    .song-list-item:hover {
+        background: var(--ml-surface-hover);
+    }
+    
+    .song-list-rank {
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--ml-text-muted);
+        text-align: center;
+    }
+    
+    .song-list-cover {
+        position: relative;
+        width: 56px;
+        height: 56px;
+    }
+    
+    .song-list-cover img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: var(--ml-radius);
+    }
+    
+    .play-btn-sm {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: var(--ml-primary);
+        border: none;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transition: var(--ml-transition);
+        cursor: pointer;
+    }
+    
+    .song-list-item:hover .play-btn-sm {
+        opacity: 1;
+    }
+    
+    .song-list-info {
+        min-width: 0;
+    }
+    
+    .song-list-info h4 {
+        margin: 0;
+        font-size: 1rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    .song-list-info h4 a {
+        color: var(--ml-text);
+        text-decoration: none;
+    }
+    
+    .song-list-info h4 a:hover {
+        color: var(--ml-primary);
+    }
+    
+    .song-list-info p {
+        margin: 4px 0 0;
+        font-size: 0.875rem;
+        color: var(--ml-text-muted);
+    }
+    
+    .song-list-info p a {
+        color: var(--ml-text-muted);
+        text-decoration: none;
+    }
+    
+    .song-list-info p a:hover {
+        color: var(--ml-primary);
+    }
+    
+    .song-list-time {
+        font-size: 0.875rem;
+        white-space: nowrap;
+    }
+    
+    .song-list-stats {
+        font-size: 0.875rem;
+        color: var(--ml-text-muted);
+    }
+    
+    .song-list-duration {
+        font-size: 0.875rem;
+        color: var(--ml-text-muted);
+        min-width: 50px;
+        text-align: right;
+    }
+    
+    .song-list-actions {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    }
+    
+    @@media (max-width: 768px) {
+        .song-list-item {
+            grid-template-columns: 40px 48px 1fr auto;
+        }
+        
+        .song-list-time,
+        .song-list-stats,
+        .song-list-duration {
+            display: none;
+        }
+    }
+</style>
+
+@section Scripts {
+    <script>
+        // Toggle favorite from history page
+        async function toggleFavoriteHistory(songId, btn) {
+            try {
+                const response = await fetch('/Profile/ToggleFavorite', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || ''
+                    },
+                    body: `songId=${songId}`
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    const icon = btn.querySelector('i');
+                    if (result.isFavorite) {
+                        icon.classList.remove('bi-heart');
+                        icon.classList.add('bi-heart-fill');
+                        btn.classList.add('active');
+                    } else {
+                        icon.classList.remove('bi-heart-fill');
+                        icon.classList.add('bi-heart');
+                        btn.classList.remove('active');
+                    }
+                    showToast(result.message, 'success');
+                }
+            } catch (err) {
+                console.error('Error:', err);
+                showToast('Error updating favorite', 'error');
+            }
+        }
+        
+        // Play all history
+        function playAllHistory() {
+            const songIds = [...document.querySelectorAll('.song-list-item')].map(c => c.dataset.songId);
+            if (songIds.length > 0) {
+                playSong(songIds[0]);
+                songIds.slice(1).forEach(id => addToQueue(id));
+            }
+        }
+        
+        // Shuffle history
+        function shuffleHistory() {
+            const songIds = [...document.querySelectorAll('.song-list-item')].map(c => c.dataset.songId);
+            if (songIds.length > 0) {
+                for (let i = songIds.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [songIds[i], songIds[j]] = [songIds[j], songIds[i]];
+                }
+                playSong(songIds[0]);
+                songIds.slice(1).forEach(id => addToQueue(id));
+            }
+        }
+    </script>
+}

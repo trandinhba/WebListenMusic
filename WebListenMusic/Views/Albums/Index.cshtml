@@ -1,0 +1,193 @@
+@model AlbumsViewModel
+@{
+    ViewData["Title"] = "Album";
+}
+
+<div class="page-header-customer">
+    <div>
+        <h1>
+            @if (!string.IsNullOrEmpty(Model.SelectedArtistName))
+            {
+                <span>Albums by @Model.SelectedArtistName</span>
+            }
+            else if (!string.IsNullOrEmpty(Model.Search))
+            {
+                <span>Results: "@Model.Search"</span>
+            }
+            else
+            {
+                <span>All Albums</span>
+            }
+        </h1>
+        <p class="text-muted">@Model.TotalItems albums</p>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="filters-bar">
+    <form method="get" class="filters-form">
+        <div class="search-box">
+            <i class="bi bi-search"></i>
+            <input type="text" name="search" value="@Model.Search" placeholder="Search albums, artists..." class="form-control" />
+        </div>
+        
+        <select name="sort" class="form-select" onchange="this.form.submit()">
+            <option value="newest" selected="@(Model.Sort == "newest")">Newest</option>
+            <option value="popular" selected="@(Model.Sort == "popular")">Most Popular</option>
+            <option value="oldest" selected="@(Model.Sort == "oldest")">Oldest</option>
+            <option value="title" selected="@(Model.Sort == "title")">By Name</option>
+        </select>
+        
+        @if (Model.ArtistId.HasValue)
+        {
+            <input type="hidden" name="artist" value="@Model.ArtistId" />
+        }
+        
+        <button type="submit" class="btn btn-primary">
+            <i class="bi bi-search"></i>
+        </button>
+        
+        @if (!string.IsNullOrEmpty(Model.Search) || Model.ArtistId.HasValue)
+        {
+            <a asp-action="Index" class="btn btn-outline-secondary">
+                <i class="bi bi-x-lg"></i> Clear Filter
+            </a>
+        }
+    </form>
+</div>
+
+<!-- Albums Grid -->
+@if (Model.Albums.Any())
+{
+    <div class="albums-grid-page">
+        @foreach (var album in Model.Albums)
+        {
+            <a asp-action="Details" asp-route-id="@album.Id" class="album-card-large">
+                <div class="album-cover-wrap">
+                    <img src="@(album.CoverImageUrl ?? "/uploads/albums/default-album.jpg")" alt="@album.Title" loading="lazy" />
+                    <div class="album-overlay">
+                        <button class="play-btn" onclick="event.preventDefault(); playAlbum(@album.Id);">
+                            <i class="bi bi-play-fill"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="album-card-info">
+                    <h4>@album.Title</h4>
+                    <p class="album-artist">@(album.Artist?.Name ?? "Various Artists")</p>
+                    <div class="album-meta">
+                        <span>@album.Songs?.Count() songs</span>
+                        @if (album.ReleaseDate.HasValue)
+                        {
+                            <span>@album.ReleaseDate.Value.Year</span>
+                        }
+                    </div>
+                </div>
+            </a>
+        }
+    </div>
+
+    <!-- Pagination -->
+    @if (Model.TotalPages > 1)
+    {
+        <nav class="pagination-nav">
+            <ul class="pagination justify-content-center">
+                <li class="page-item @(Model.CurrentPage == 1 ? "disabled" : "")">
+                    <a class="page-link" asp-action="Index" asp-route-search="@Model.Search" asp-route-artist="@Model.ArtistId" asp-route-sort="@Model.Sort" asp-route-page="@(Model.CurrentPage - 1)">
+                        <i class="bi bi-chevron-left"></i>
+                    </a>
+                </li>
+                @for (var i = Math.Max(1, Model.CurrentPage - 2); i <= Math.Min(Model.TotalPages, Model.CurrentPage + 2); i++)
+                {
+                    <li class="page-item @(i == Model.CurrentPage ? "active" : "")">
+                        <a class="page-link" asp-action="Index" asp-route-search="@Model.Search" asp-route-artist="@Model.ArtistId" asp-route-sort="@Model.Sort" asp-route-page="@i">@i</a>
+                    </li>
+                }
+                <li class="page-item @(Model.CurrentPage == Model.TotalPages ? "disabled" : "")">
+                    <a class="page-link" asp-action="Index" asp-route-search="@Model.Search" asp-route-artist="@Model.ArtistId" asp-route-sort="@Model.Sort" asp-route-page="@(Model.CurrentPage + 1)">
+                        <i class="bi bi-chevron-right"></i>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+    }
+}
+else
+{
+    <div class="empty-state">
+        <i class="bi bi-disc"></i>
+        <h3>No albums found</h3>
+        <p>Try changing your search keywords</p>
+        <a asp-action="Index" class="btn btn-primary">View All</a>
+    </div>
+}
+
+<style>
+    .albums-grid-page {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 24px;
+        margin-bottom: 40px;
+    }
+    
+    .album-card-large {
+        display: block;
+        text-decoration: none;
+        color: var(--ml-text);
+        background: var(--ml-surface);
+        border-radius: var(--ml-radius-lg);
+        overflow: hidden;
+        transition: var(--ml-transition);
+    }
+    
+    .album-card-large:hover {
+        transform: translateY(-4px);
+        box-shadow: var(--ml-shadow-lg);
+        background: var(--ml-surface-hover);
+    }
+    
+    .album-cover-wrap {
+        position: relative;
+        aspect-ratio: 1;
+        overflow: hidden;
+    }
+    
+    .album-cover-wrap img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.3s ease;
+    }
+    
+    .album-card-large:hover .album-cover-wrap img {
+        transform: scale(1.05);
+    }
+    
+    .album-card-info {
+        padding: 16px;
+    }
+    
+    .album-card-info h4 {
+        font-size: 1rem;
+        font-weight: 600;
+        margin-bottom: 4px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    .album-artist {
+        font-size: 0.875rem;
+        color: var(--ml-text-muted);
+        margin-bottom: 8px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    .album-meta {
+        display: flex;
+        gap: 12px;
+        font-size: 0.75rem;
+        color: var(--ml-text-dark);
+    }
+</style>

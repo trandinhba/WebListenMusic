@@ -1,0 +1,402 @@
+@model Playlist
+@{
+    ViewData["Title"] = Model.Name;
+    var isOwner = ViewBag.IsOwner as bool? ?? false;
+    var totalDuration = Model.PlaylistSongs?.Sum(ps => ps.Song?.Duration ?? 0) ?? 0;
+    var firstCover = Model.PlaylistSongs?.FirstOrDefault()?.Song?.CoverImageUrl;
+}
+
+<div class="playlist-detail-page">
+    <!-- Playlist Header -->
+    <div class="playlist-header">
+        <div class="playlist-cover-large">
+            @if (!string.IsNullOrEmpty(Model.CoverImageUrl))
+            {
+                <img src="@Model.CoverImageUrl" alt="@Model.Name" />
+            }
+            else if (!string.IsNullOrEmpty(firstCover))
+            {
+                <img src="@firstCover" alt="@Model.Name" />
+            }
+            else
+            {
+                <div class="playlist-cover-default-lg">
+                    <i class="bi bi-music-note-list"></i>
+                </div>
+            }
+        </div>
+        <div class="playlist-header-info">
+            <span class="content-type">
+                @if (Model.IsPublic)
+                {
+                    <span>Public Playlist</span>
+                }
+                else
+                {
+                    <span><i class="bi bi-lock-fill"></i> Private Playlist</span>
+                }
+            </span>
+            <h1>@Model.Name</h1>
+            @if (!string.IsNullOrEmpty(Model.Description))
+            {
+                <p class="playlist-description">@Model.Description</p>
+            }
+            <div class="playlist-meta-info">
+                <a asp-controller="Profile" asp-action="Index" asp-route-id="@Model.UserId" class="owner-link">
+                    @(Model.User?.DisplayName ?? "User")
+                </a>
+                <span class="separator">•</span>
+                <span>@Model.PlaylistSongs?.Count() songs</span>
+                <span class="separator">•</span>
+                <span>@FormatTotalDuration(totalDuration)</span>
+            </div>
+            <div class="playlist-actions-main">
+                @if (Model.PlaylistSongs?.Any() == true)
+                {
+                    <button class="btn btn-primary btn-lg" onclick="playPlaylist(@Model.Id)">
+                        <i class="bi bi-play-fill me-2"></i>Play All
+                    </button>
+                    <button class="btn btn-outline-light" onclick="shufflePlaylist(@Model.Id)">
+                        <i class="bi bi-shuffle me-2"></i>Shuffle
+                    </button>
+                }
+                @if (isOwner)
+                {
+                    <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-outline-light">
+                        <i class="bi bi-pencil me-2"></i>Edit
+                    </a>
+                    <form asp-action="Delete" asp-route-id="@Model.Id" method="post" class="d-inline" onsubmit="return confirm('Delete this playlist?');">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-outline-danger">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </form>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Track List -->
+    @if (Model.PlaylistSongs?.Any() == true)
+    {
+        <div class="track-list-section">
+            <div class="track-list-header">
+                <span class="track-number">#</span>
+                <span class="track-title">Title</span>
+                <span class="track-added d-none d-md-block">Date Added</span>
+                <span class="track-duration"><i class="bi bi-clock"></i></span>
+                <span class="track-actions"></span>
+            </div>
+            <div class="track-list">
+                @{ var trackNum = 0; }
+                @foreach (var ps in Model.PlaylistSongs)
+                {
+                    if (ps.Song == null) continue;
+                    trackNum++;
+                    <div class="track-item" data-song-id="@ps.Song.Id">
+                        <span class="track-number">
+                            <span class="num">@trackNum</span>
+                            <button class="play-btn-mini" onclick="playSong(@ps.Song.Id)">
+                                <i class="bi bi-play-fill"></i>
+                            </button>
+                        </span>
+                        <div class="track-title">
+                            <img src="@(ps.Song.CoverImageUrl ?? "/uploads/covers/default-song.jpg")" alt="@ps.Song.Title" class="track-cover" />
+                            <div class="track-info">
+                                <a asp-controller="Songs" asp-action="Details" asp-route-id="@ps.Song.Id">@ps.Song.Title</a>
+                                <span>@(ps.Song.Artist?.Name ?? "Unknown")</span>
+                            </div>
+                        </div>
+                        <span class="track-added d-none d-md-block">@ps.AddedAt.ToString("dd/MM/yyyy")</span>
+                        <span class="track-duration">@FormatDuration(ps.Song.Duration)</span>
+                        <div class="track-actions">
+                            <button class="btn-icon" onclick="toggleLike(@ps.Song.Id)"><i class="bi bi-heart"></i></button>
+                            @if (isOwner)
+                            {
+                                <button class="btn-icon text-danger" onclick="removeSong(@Model.Id, @ps.Song.Id)" title="Remove from playlist">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                            }
+                            <div class="dropdown d-inline-block">
+                                <button class="btn-icon" data-bs-toggle="dropdown">
+                                    <i class="bi bi-three-dots"></i>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end">
+                                    <li><a class="dropdown-item" href="#" onclick="playNext(@ps.Song.Id)"><i class="bi bi-skip-end"></i> Play Next</a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="addToQueue(@ps.Song.Id)"><i class="bi bi-list-ul"></i> Add to Queue</a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item" asp-controller="Songs" asp-action="Details" asp-route-id="@ps.Song.Id"><i class="bi bi-info-circle"></i> Details</a></li>
+                                    @if (ps.Song.Artist != null)
+                                    {
+                                        <li><a class="dropdown-item" asp-controller="Artists" asp-action="Details" asp-route-id="@ps.Song.ArtistId"><i class="bi bi-person"></i> View Artist</a></li>
+                                    }
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="empty-state">
+            <i class="bi bi-music-note-list"></i>
+            <h3>Empty Playlist</h3>
+            <p>Add songs to this playlist</p>
+            <a asp-controller="Songs" asp-action="Index" class="btn btn-primary">Explore Songs</a>
+        </div>
+    }
+</div>
+
+<style>
+    .playlist-detail-page {
+        padding-bottom: 40px;
+    }
+    
+    .playlist-header {
+        display: flex;
+        gap: 32px;
+        margin-bottom: 40px;
+        padding-bottom: 32px;
+        border-bottom: 1px solid var(--ml-border);
+    }
+    
+    .playlist-cover-large {
+        width: 280px;
+        height: 280px;
+        flex-shrink: 0;
+    }
+    
+    .playlist-cover-large img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: var(--ml-radius-lg);
+        box-shadow: var(--ml-shadow-lg);
+    }
+    
+    .playlist-cover-default-lg {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--ml-gradient-primary);
+        border-radius: var(--ml-radius-lg);
+        font-size: 6rem;
+        color: rgba(255, 255, 255, 0.5);
+    }
+    
+    .playlist-header-info {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+    }
+    
+    .content-type {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        font-weight: 600;
+        color: var(--ml-text-muted);
+        margin-bottom: 8px;
+    }
+    
+    .playlist-header-info h1 {
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin-bottom: 12px;
+    }
+    
+    .playlist-description {
+        color: var(--ml-text-muted);
+        margin-bottom: 16px;
+        max-width: 600px;
+    }
+    
+    .playlist-meta-info {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 24px;
+        color: var(--ml-text-muted);
+    }
+    
+    .owner-link {
+        color: var(--ml-text);
+        font-weight: 500;
+    }
+    
+    .playlist-actions-main {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+    
+    .track-list-section {
+        margin-bottom: 48px;
+    }
+    
+    .track-list-header {
+        display: grid;
+        grid-template-columns: 48px 1fr 120px 60px 100px;
+        gap: 16px;
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--ml-border);
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        color: var(--ml-text-muted);
+        font-weight: 600;
+    }
+    
+    .track-item {
+        display: grid;
+        grid-template-columns: 48px 1fr 120px 60px 100px;
+        gap: 16px;
+        align-items: center;
+        padding: 12px 16px;
+        border-radius: var(--ml-radius);
+        transition: var(--ml-transition);
+    }
+    
+    .track-item:hover {
+        background: var(--ml-surface);
+    }
+    
+    .track-number {
+        text-align: center;
+        color: var(--ml-text-muted);
+        position: relative;
+    }
+    
+    .track-number .num { display: block; }
+    .play-btn-mini {
+        display: none;
+        position: absolute;
+        inset: 0;
+        background: transparent;
+        border: none;
+        color: var(--ml-text);
+        cursor: pointer;
+    }
+    .track-item:hover .num { display: none; }
+    .track-item:hover .play-btn-mini {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .track-title {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+    }
+    
+    .track-cover {
+        width: 40px;
+        height: 40px;
+        border-radius: var(--ml-radius-sm);
+        object-fit: cover;
+    }
+    
+    .track-info { min-width: 0; }
+    .track-info a {
+        display: block;
+        color: var(--ml-text);
+        font-weight: 500;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .track-info a:hover { color: var(--ml-primary); }
+    .track-info span {
+        display: block;
+        font-size: 0.75rem;
+        color: var(--ml-text-muted);
+    }
+    
+    .track-added, .track-duration {
+        font-size: 0.875rem;
+        color: var(--ml-text-muted);
+    }
+    
+    .track-actions {
+        display: flex;
+        gap: 4px;
+        justify-content: flex-end;
+        opacity: 0;
+        transition: var(--ml-transition);
+    }
+    .track-item:hover .track-actions { opacity: 1; }
+    
+    @@media (max-width: 768px) {
+        .playlist-header {
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+        .playlist-cover-large {
+            width: 200px;
+            height: 200px;
+        }
+        .playlist-header-info h1 { font-size: 1.75rem; }
+        .playlist-meta-info, .playlist-actions-main { justify-content: center; }
+        .track-list-header, .track-item {
+            grid-template-columns: 40px 1fr 60px 80px;
+        }
+        .track-added { display: none !important; }
+    }
+</style>
+
+@section Scripts {
+    <script>
+        function shufflePlaylist(playlistId) {
+            const songIds = [@Html.Raw(string.Join(",", Model.PlaylistSongs?.Select(ps => ps.SongId) ?? new List<int>()))];
+            const shuffled = songIds.sort(() => Math.random() - 0.5);
+            playMultipleSongs(shuffled);
+        }
+        
+        function playPlaylist(playlistId) {
+            const songIds = [@Html.Raw(string.Join(",", Model.PlaylistSongs?.Select(ps => ps.SongId) ?? new List<int>()))];
+            playMultipleSongs(songIds);
+        }
+        
+        async function removeSong(playlistId, songId) {
+            if (!confirm('Remove song from playlist?')) return;
+            
+            const response = await fetch('/Playlists/RemoveSong', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'RequestVerificationToken': document.querySelector('[name="__RequestVerificationToken"]').value
+                },
+                body: `playlistId=${playlistId}&songId=${songId}`
+            });
+            
+            const result = await response.json();
+            if (result.success) {
+                location.reload();
+            } else {
+                alert(result.message);
+            }
+        }
+    </script>
+}
+
+@functions {
+    string FormatDuration(int seconds)
+    {
+        var span = TimeSpan.FromSeconds(seconds);
+        return span.Hours > 0 ? span.ToString(@"h\:mm\:ss") : span.ToString(@"m\:ss");
+    }
+    
+    string FormatTotalDuration(int seconds)
+    {
+        var span = TimeSpan.FromSeconds(seconds);
+        if (span.TotalHours >= 1)
+            return $"{(int)span.TotalHours} hr {span.Minutes} min";
+        return $"{span.Minutes} min";
+    }
+}

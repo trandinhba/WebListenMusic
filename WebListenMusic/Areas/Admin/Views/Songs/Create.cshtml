@@ -1,0 +1,141 @@
+@model AdminSongFormViewModel
+@{
+    ViewData["Title"] = "Add New Song";
+}
+
+<div class="page-header">
+    <div>
+        <h1>Add New Song</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a asp-action="Index" asp-controller="Dashboard">Dashboard</a></li>
+                <li class="breadcrumb-item"><a asp-action="Index">Songs</a></li>
+                <li class="breadcrumb-item active">Add New</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<div class="admin-card">
+    <div class="admin-card-header">
+        <h3><i class="bi bi-music-note-beamed me-2"></i>Song Information</h3>
+    </div>
+    <div class="admin-card-body">
+        <form asp-action="Create" method="post" enctype="multipart/form-data">
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+
+            <div class="row">
+                <div class="col-md-8">
+                    <!-- Basic Info -->
+                    <div class="mb-3">
+                        <label asp-for="Title" class="form-label">Song Title <span class="text-danger">*</span></label>
+                        <input asp-for="Title" class="form-control" placeholder="Enter song title" />
+                        <span asp-validation-for="Title" class="text-danger"></span>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="ArtistId" class="form-label">Artist</label>
+                            <select asp-for="ArtistId" class="form-select" asp-items="ViewBag.Artists">
+                                <option value="">-- Select Artist --</option>
+                            </select>
+                            <span asp-validation-for="ArtistId" class="text-danger"></span>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="AlbumId" class="form-label">Album</label>
+                            <select asp-for="AlbumId" class="form-select" asp-items="ViewBag.Albums">
+                                <option value="">-- Select Album --</option>
+                            </select>
+                            <span asp-validation-for="AlbumId" class="text-danger"></span>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="GenreId" class="form-label">Genre</label>
+                            <select asp-for="GenreId" class="form-select" asp-items="ViewBag.Genres">
+                                <option value="">-- Select Genre --</option>
+                            </select>
+                            <span asp-validation-for="GenreId" class="text-danger"></span>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="Duration" class="form-label">Duration (seconds)</label>
+                            <input asp-for="Duration" type="number" class="form-control" min="0" placeholder="180" />
+                            <span asp-validation-for="Duration" class="text-danger"></span>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Lyrics" class="form-label">Lyrics</label>
+                        <textarea asp-for="Lyrics" class="form-control" rows="6" placeholder="Enter lyrics..."></textarea>
+                        <span asp-validation-for="Lyrics" class="text-danger"></span>
+                    </div>
+
+                    <!-- Files Upload -->
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="AudioFile" class="form-label">Audio File <span class="text-danger">*</span></label>
+                            <input asp-for="AudioFile" type="file" class="form-control" accept=".mp3,.wav,.ogg,.m4a" />
+                            <span asp-validation-for="AudioFile" class="text-danger"></span>
+                            <div class="form-text">Format: MP3, WAV, OGG, M4A (Max: 20MB)</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="CoverImage" class="form-label">Cover Image</label>
+                            <input asp-for="CoverImage" type="file" class="form-control" accept="image/*" />
+                            <span asp-validation-for="CoverImage" class="text-danger"></span>
+                            <div class="form-text">Format: JPG, PNG (Recommended: 500x500px)</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <!-- Preview & Settings -->
+                    <div class="settings-panel p-3 rounded" style="background: var(--ml-bg-secondary);">
+                        <h5 class="mb-3">Settings</h5>
+                        
+                        <div class="form-check form-switch mb-3">
+                            <input asp-for="IsPublished" class="form-check-input" type="checkbox" checked />
+                            <label asp-for="IsPublished" class="form-check-label">Publish publicly</label>
+                        </div>
+
+                        <hr />
+
+                        <div class="cover-preview text-center">
+                            <img id="coverPreview" src="/images/default-song.svg" alt="Cover Preview" 
+                                 class="rounded shadow" style="max-width: 100%; max-height: 200px;" />
+                            <p class="form-text mt-2">Cover Image Preview</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <hr />
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-lg me-2"></i>Add Song
+                </button>
+                <a asp-action="Index" class="btn btn-outline-secondary">
+                    <i class="bi bi-x-lg me-2"></i>Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        // Cover image preview
+        document.getElementById('CoverImage').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('coverPreview').src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    </script>
+}

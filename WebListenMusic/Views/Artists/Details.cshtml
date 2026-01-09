@@ -1,0 +1,326 @@
+@model Artist
+@{
+    ViewData["Title"] = Model.Name;
+    var relatedArtists = ViewBag.RelatedArtists as List<Artist> ?? new List<Artist>();
+    var totalPlays = Model.Songs?.Sum(s => s.PlayCount) ?? 0;
+}
+
+<div class="artist-detail-page">
+    <!-- Artist Header with Cover -->
+    <div class="artist-header" style="background-image: url('@(Model.ImageUrl ?? "/uploads/artists/default-artist.jpg")');">
+        <div class="artist-header-overlay"></div>
+        <div class="artist-header-content">
+            <div class="artist-avatar-detail">
+                <img src="@(Model.ImageUrl ?? "/uploads/artists/default-artist.jpg")" alt="@Model.Name" />
+            </div>
+            <div class="artist-info-detail">
+                @if (Model.IsVerified)
+                {
+                    <span class="verified-tag">
+                        <i class="bi bi-patch-check-fill"></i> Verified Artist
+                    </span>
+                }
+                <h1>@Model.Name</h1>
+                <div class="artist-stats">
+                    <span><i class="bi bi-play-circle"></i> @totalPlays.ToString("N0") plays</span>
+                    <span><i class="bi bi-music-note"></i> @Model.Songs?.Count() songs</span>
+                    <span><i class="bi bi-disc"></i> @Model.Albums?.Count() albums</span>
+                </div>
+                <div class="artist-actions">
+                    <button class="btn btn-primary btn-lg" onclick="playArtist(@Model.Id)">
+                        <i class="bi bi-play-fill me-2"></i>Play Music
+                    </button>
+                    <button class="btn btn-outline-light" id="followBtn">
+                        <i class="bi bi-person-plus me-2"></i>Follow
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bio -->
+    @if (!string.IsNullOrEmpty(Model.Bio))
+    {
+        <div class="artist-bio">
+            <h3>About</h3>
+            <p>@Model.Bio</p>
+        </div>
+    }
+
+    <!-- Popular Songs -->
+    @if (Model.Songs?.Any() == true)
+    {
+        <section class="section">
+            <div class="section-header">
+                <div>
+                    <h2><i class="bi bi-fire text-danger me-2"></i>Popular Songs</h2>
+                </div>
+                <a asp-controller="Songs" asp-action="Index" asp-route-artist="@Model.Id" class="btn btn-outline-primary btn-sm">
+                    View All <i class="bi bi-arrow-right ms-1"></i>
+                </a>
+            </div>
+            <div class="songs-list">
+                @{ var index = 0; }
+                @foreach (var song in Model.Songs.Take(10))
+                {
+                    index++;
+                    <div class="song-list-item" data-song-id="@song.Id">
+                        <div class="song-rank">@index</div>
+                        <div class="song-cover">
+                            <img src="@(song.CoverImageUrl ?? "/uploads/covers/default-song.jpg")" alt="@song.Title" />
+                            <button class="play-btn-sm" onclick="playSong(@song.Id)">
+                                <i class="bi bi-play-fill"></i>
+                            </button>
+                        </div>
+                        <div class="song-info">
+                            <h4><a asp-controller="Songs" asp-action="Details" asp-route-id="@song.Id">@song.Title</a></h4>
+                            <p>@(song.Album?.Title ?? "Single")</p>
+                        </div>
+                        <div class="song-stats d-none d-md-block">
+                            <span class="text-muted">@FormatNumber(song.PlayCount) plays</span>
+                        </div>
+                        <div class="song-duration">@FormatDuration(song.Duration)</div>
+                        <div class="song-actions">
+                            <button class="btn-icon" onclick="toggleLike(@song.Id)"><i class="bi bi-heart"></i></button>
+                            <button class="btn-icon" onclick="addToPlaylist(@song.Id)"><i class="bi bi-plus-lg"></i></button>
+                        </div>
+                    </div>
+                }
+            </div>
+        </section>
+    }
+
+    <!-- Albums -->
+    @if (Model.Albums?.Any() == true)
+    {
+        <section class="section">
+            <div class="section-header">
+                <div>
+                    <h2><i class="bi bi-disc-fill text-info me-2"></i>Albums</h2>
+                </div>
+                <a asp-controller="Albums" asp-action="Index" asp-route-artist="@Model.Id" class="btn btn-outline-primary btn-sm">
+                    View All <i class="bi bi-arrow-right ms-1"></i>
+                </a>
+            </div>
+            <div class="albums-grid">
+                @foreach (var album in Model.Albums.Take(6))
+                {
+                    <a asp-controller="Albums" asp-action="Details" asp-route-id="@album.Id" class="album-card">
+                        <div class="album-cover">
+                            <img src="@(album.CoverImageUrl ?? "/uploads/albums/default-album.jpg")" alt="@album.Title" loading="lazy" />
+                            <div class="album-overlay">
+                                <button class="play-btn" onclick="event.preventDefault(); playAlbum(@album.Id);">
+                                    <i class="bi bi-play-fill"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="album-info">
+                            <h4>@album.Title</h4>
+                            <p>@(album.ReleaseDate?.Year.ToString() ?? "Album")</p>
+                            <span class="album-meta">@album.Songs?.Count() songs</span>
+                        </div>
+                    </a>
+                }
+            </div>
+        </section>
+    }
+
+    <!-- Related Artists -->
+    @if (relatedArtists.Any())
+    {
+        <section class="section">
+            <div class="section-header">
+                <div>
+                    <h2><i class="bi bi-people-fill me-2"></i>Similar Artists</h2>
+                </div>
+            </div>
+            <div class="artists-grid">
+                @foreach (var artist in relatedArtists)
+                {
+                    <a asp-action="Details" asp-route-id="@artist.Id" class="artist-card">
+                        <div class="artist-avatar">
+                            <img src="@(artist.ImageUrl ?? "/uploads/artists/default-artist.jpg")" alt="@artist.Name" loading="lazy" />
+                            @if (artist.IsVerified)
+                            {
+                                <span class="verified-badge" title="Verified Artist">
+                                    <i class="bi bi-patch-check-fill"></i>
+                                </span>
+                            }
+                        </div>
+                        <h4>@artist.Name</h4>
+                        <p>@artist.Songs?.Count() songs</p>
+                    </a>
+                }
+            </div>
+        </section>
+    }
+</div>
+
+<style>
+    .artist-detail-page {
+        margin: -24px -24px 0 -24px;
+    }
+    
+    .artist-header {
+        position: relative;
+        min-height: 400px;
+        background-size: cover;
+        background-position: center;
+        display: flex;
+        align-items: flex-end;
+        padding: 48px;
+    }
+    
+    .artist-header-overlay {
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(transparent 0%, rgba(11, 18, 32, 0.8) 50%, rgba(11, 18, 32, 1) 100%);
+    }
+    
+    .artist-header-content {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        gap: 32px;
+        align-items: flex-end;
+        width: 100%;
+    }
+    
+    .artist-avatar-detail {
+        width: 200px;
+        height: 200px;
+        flex-shrink: 0;
+    }
+    
+    .artist-avatar-detail img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: 50%;
+        box-shadow: var(--ml-shadow-lg);
+    }
+    
+    .artist-info-detail {
+        flex: 1;
+    }
+    
+    .verified-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 12px;
+        background: rgba(var(--ml-primary-rgb), 0.2);
+        border-radius: var(--ml-radius-full);
+        font-size: 0.75rem;
+        color: var(--ml-info);
+        margin-bottom: 12px;
+    }
+    
+    .artist-info-detail h1 {
+        font-size: 3rem;
+        font-weight: 700;
+        margin-bottom: 16px;
+    }
+    
+    .artist-stats {
+        display: flex;
+        gap: 24px;
+        margin-bottom: 24px;
+        color: var(--ml-text-muted);
+    }
+    
+    .artist-stats span {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    
+    .artist-actions {
+        display: flex;
+        gap: 12px;
+    }
+    
+    .artist-bio {
+        padding: 24px 48px;
+        margin-bottom: 24px;
+    }
+    
+    .artist-bio h3 {
+        font-size: 1.25rem;
+        margin-bottom: 12px;
+    }
+    
+    .artist-bio p {
+        color: var(--ml-text-muted);
+        line-height: 1.7;
+        max-width: 800px;
+    }
+    
+    .artist-detail-page .section {
+        padding: 0 48px;
+        margin-bottom: 40px;
+    }
+    
+    @@media (max-width: 768px) {
+        .artist-header {
+            min-height: 300px;
+            padding: 24px;
+        }
+        
+        .artist-header-content {
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+        
+        .artist-avatar-detail {
+            width: 150px;
+            height: 150px;
+        }
+        
+        .artist-info-detail h1 {
+            font-size: 2rem;
+        }
+        
+        .artist-stats {
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .artist-actions {
+            justify-content: center;
+        }
+        
+        .artist-bio,
+        .artist-detail-page .section {
+            padding: 0 24px;
+        }
+    }
+</style>
+
+@section Scripts {
+    <script>
+        function playArtist(artistId) {
+            // Get all songs by artist and play
+            const songIds = [@Html.Raw(string.Join(",", Model.Songs?.Select(s => s.Id) ?? new List<int>()))];
+            if (songIds.length > 0) {
+                playMultipleSongs(songIds);
+            }
+        }
+    </script>
+}
+
+@functions {
+    string FormatDuration(int seconds)
+    {
+        var span = TimeSpan.FromSeconds(seconds);
+        return span.Hours > 0 ? span.ToString(@"h\:mm\:ss") : span.ToString(@"m\:ss");
+    }
+    
+    string FormatNumber(int number)
+    {
+        if (number >= 1000000) return (number / 1000000.0).ToString("0.#") + "M";
+        if (number >= 1000) return (number / 1000.0).ToString("0.#") + "K";
+        return number.ToString();
+    }
+}

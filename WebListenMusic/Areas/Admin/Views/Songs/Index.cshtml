@@ -1,0 +1,162 @@
+@model IEnumerable<AdminSongListItemViewModel>
+@{
+    ViewData["Title"] = "Songs Management";
+}
+
+<div class="page-header">
+    <div>
+        <h1>Songs Management</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a asp-action="Index" asp-controller="Dashboard">Dashboard</a></li>
+                <li class="breadcrumb-item active">Songs</li>
+            </ol>
+        </nav>
+    </div>
+    <a asp-action="Create" class="btn btn-primary">
+        <i class="bi bi-plus-lg me-2"></i>Add Song
+    </a>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle me-2"></i>@TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<div class="admin-card">
+    <div class="admin-card-header">
+        <h3><i class="bi bi-music-note-list me-2"></i>Songs List (@ViewBag.TotalItems)</h3>
+        <form asp-action="Index" method="get" class="d-flex gap-2">
+            <div class="input-group" style="width: 250px;">
+                <input type="text" name="search" class="form-control" placeholder="Search..." value="@ViewBag.Search" />
+                <button type="submit" class="btn btn-secondary"><i class="bi bi-search"></i></button>
+            </div>
+            <select name="genreId" class="form-select" style="width: 150px;" onchange="this.form.submit()">
+                <option value="">-- Genre --</option>
+                @foreach (SelectListItem item in ViewBag.Genres)
+                {
+                    <option value="@item.Value" selected="@item.Selected">@item.Text</option>
+                }
+            </select>
+            <select name="artistId" class="form-select" style="width: 150px;" onchange="this.form.submit()">
+                <option value="">-- Artist --</option>
+                @foreach (SelectListItem item in ViewBag.Artists)
+                {
+                    <option value="@item.Value" selected="@item.Selected">@item.Text</option>
+                }
+            </select>
+            @if (!string.IsNullOrEmpty(ViewBag.Search as string) || ViewBag.GenreId != null || ViewBag.ArtistId != null)
+            {
+                <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-x-lg"></i></a>
+            }
+        </form>
+    </div>
+    <div class="admin-card-body p-0">
+        @if (!Model.Any())
+        {
+            <div class="empty-state text-center py-5">
+                <i class="bi bi-music-note" style="font-size: 3rem; color: var(--ml-text-muted);"></i>
+                <h5 class="mt-3">No songs yet</h5>
+                <a asp-action="Create" class="btn btn-primary mt-2">
+                    <i class="bi bi-plus-lg me-2"></i>Add Song
+                </a>
+            </div>
+        }
+        else
+        {
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th style="width: 50px;">#</th>
+                        <th>Song</th>
+                        <th>Artist</th>
+                        <th>Genre</th>
+                        <th style="width: 100px;">Duration</th>
+                        <th style="width: 100px;">Plays</th>
+                        <th style="width: 100px;">Status</th>
+                        <th style="width: 120px;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @{
+                        var index = (ViewBag.CurrentPage - 1) * 15;
+                    }
+                    @foreach (var song in Model)
+                    {
+                        index++;
+                        <tr>
+                            <td>@index</td>
+                            <td>
+                                <div class="cell-title">
+                                    <img src="@(song.CoverImageUrl ?? "/uploads/covers/default-song.jpg")" alt="@song.Title" />
+                                    <div>
+                                        <div class="title-text">@song.Title</div>
+                                        <div class="subtitle-text">@song.CreatedAt.ToString("dd/MM/yyyy")</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>@(song.ArtistName ?? "-")</td>
+                            <td>@(song.GenreName ?? "-")</td>
+                            <td>@TimeSpan.FromSeconds(song.Duration).ToString(@"m\:ss")</td>
+                            <td>@song.PlayCount.ToString("N0")</td>
+                            <td>
+                                <span class="status-badge @(song.IsPublished ? "active" : "inactive")">
+                                    @(song.IsPublished ? "Active" : "Inactive")
+                                </span>
+                            </td>
+                            <td>
+                                <div class="action-buttons">
+                                    <a asp-action="Details" asp-route-id="@song.Id" class="btn btn-icon btn-sm" title="Details">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <a asp-action="Edit" asp-route-id="@song.Id" class="btn btn-icon btn-sm" title="Edit">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <form asp-action="Delete" asp-route-id="@song.Id" method="post" class="d-inline"
+                                          onsubmit="return confirm('Are you sure you want to delete?');">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-icon btn-sm text-danger" title="Delete">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+    
+    @if (ViewBag.TotalPages > 1)
+    {
+        <div class="admin-card-footer">
+            <nav aria-label="Page navigation">
+                <ul class="pagination justify-content-center mb-0">
+                    <li class="page-item @(ViewBag.CurrentPage == 1 ? "disabled" : "")">
+                        <a class="page-link" asp-action="Index" asp-route-page="@(ViewBag.CurrentPage - 1)"
+                           asp-route-search="@ViewBag.Search" asp-route-genreId="@ViewBag.GenreId" asp-route-artistId="@ViewBag.ArtistId">
+                            <i class="bi bi-chevron-left"></i>
+                        </a>
+                    </li>
+                    @for (int i = 1; i <= ViewBag.TotalPages; i++)
+                    {
+                        <li class="page-item @(i == ViewBag.CurrentPage ? "active" : "")">
+                            <a class="page-link" asp-action="Index" asp-route-page="@i"
+                               asp-route-search="@ViewBag.Search" asp-route-genreId="@ViewBag.GenreId" asp-route-artistId="@ViewBag.ArtistId">@i</a>
+                        </li>
+                    }
+                    <li class="page-item @(ViewBag.CurrentPage == ViewBag.TotalPages ? "disabled" : "")">
+                        <a class="page-link" asp-action="Index" asp-route-page="@(ViewBag.CurrentPage + 1)"
+                           asp-route-search="@ViewBag.Search" asp-route-genreId="@ViewBag.GenreId" asp-route-artistId="@ViewBag.ArtistId">
+                            <i class="bi bi-chevron-right"></i>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    }
+</div>

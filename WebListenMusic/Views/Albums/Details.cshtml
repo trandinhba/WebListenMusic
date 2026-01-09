@@ -1,0 +1,416 @@
+@model Album
+@{
+    ViewData["Title"] = Model.Title;
+    var otherAlbums = ViewBag.OtherAlbums as List<Album> ?? new List<Album>();
+}
+
+<div class="album-detail-page">
+    <!-- Album Header -->
+    <div class="album-header">
+        <div class="album-cover-large">
+            <img src="@(Model.CoverImageUrl ?? "/uploads/albums/default-album.jpg")" alt="@Model.Title" />
+        </div>
+        <div class="album-header-info">
+            <span class="content-type">Album</span>
+            <h1>@Model.Title</h1>
+            <div class="album-meta-info">
+                @if (Model.Artist != null)
+                {
+                    <a asp-controller="Artists" asp-action="Details" asp-route-id="@Model.ArtistId" class="artist-link">
+                        <img src="@(Model.Artist.ImageUrl ?? "/uploads/artists/default-artist.jpg")" alt="@Model.Artist.Name" />
+                        @Model.Artist.Name
+                        @if (Model.Artist.IsVerified)
+                        {
+                            <i class="bi bi-patch-check-fill text-info"></i>
+                        }
+                    </a>
+                }
+                @if (Model.ReleaseDate.HasValue)
+                {
+                    <span class="separator">•</span>
+                    <span>@Model.ReleaseDate.Value.Year</span>
+                }
+                <span class="separator">•</span>
+                <span>@Model.Songs?.Count() songs</span>
+                <span class="separator">•</span>
+                <span>@FormatTotalDuration(Model.Songs?.Sum(s => s.Duration) ?? 0)</span>
+            </div>
+            @if (!string.IsNullOrEmpty(Model.Description))
+            {
+                <p class="album-description">@Model.Description</p>
+            }
+            <div class="album-actions-main">
+                <button class="btn btn-primary btn-lg" onclick="playAlbum(@Model.Id)">
+                    <i class="bi bi-play-fill me-2"></i>Play All
+                </button>
+                <button class="btn btn-outline-light" onclick="shuffleAlbum(@Model.Id)">
+                    <i class="bi bi-shuffle me-2"></i>Shuffle
+                </button>
+                <button class="btn btn-outline-light" onclick="addAlbumToPlaylist(@Model.Id)">
+                    <i class="bi bi-plus-lg me-2"></i>Add to Playlist
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Track List -->
+    <div class="track-list-section">
+        <div class="track-list-header">
+            <span class="track-number">#</span>
+            <span class="track-title">Title</span>
+            <span class="track-plays d-none d-md-block"><i class="bi bi-play-circle"></i></span>
+            <span class="track-duration"><i class="bi bi-clock"></i></span>
+            <span class="track-actions"></span>
+        </div>
+        <div class="track-list">
+            @{ var trackNum = 0; }
+            @foreach (var song in Model.Songs ?? new List<Song>())
+            {
+                trackNum++;
+                <div class="track-item" data-song-id="@song.Id">
+                    <span class="track-number">
+                        <span class="num">@trackNum</span>
+                        <button class="play-btn-mini" onclick="playSong(@song.Id)">
+                            <i class="bi bi-play-fill"></i>
+                        </button>
+                    </span>
+                    <div class="track-title">
+                        <img src="@(song.CoverImageUrl ?? Model.CoverImageUrl ?? "/uploads/covers/default-song.jpg")" alt="@song.Title" class="track-cover" />
+                        <div class="track-info">
+                            <a asp-controller="Songs" asp-action="Details" asp-route-id="@song.Id">@song.Title</a>
+                            <span>@(song.Artist?.Name ?? Model.Artist?.Name ?? "Unknown")</span>
+                        </div>
+                    </div>
+                    <span class="track-plays d-none d-md-block">@FormatNumber(song.PlayCount)</span>
+                    <span class="track-duration">@FormatDuration(song.Duration)</span>
+                    <div class="track-actions">
+                        <button class="btn-icon" onclick="toggleLike(@song.Id)"><i class="bi bi-heart"></i></button>
+                        <button class="btn-icon" onclick="addToPlaylist(@song.Id)"><i class="bi bi-plus-lg"></i></button>
+                        <div class="dropdown d-inline-block">
+                            <button class="btn-icon" data-bs-toggle="dropdown">
+                                <i class="bi bi-three-dots"></i>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end">
+                                <li><a class="dropdown-item" href="#" onclick="playNext(@song.Id)"><i class="bi bi-skip-end"></i> Play Next</a></li>
+                                <li><a class="dropdown-item" href="#" onclick="addToQueue(@song.Id)"><i class="bi bi-list-ul"></i> Add to Queue</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" asp-controller="Songs" asp-action="Details" asp-route-id="@song.Id"><i class="bi bi-info-circle"></i> Details</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Other Albums by Artist -->
+    @if (otherAlbums.Any())
+    {
+        <div class="section">
+            <div class="section-header">
+                <div>
+                    <h2>Other albums by @(Model.Artist?.Name ?? "the artist")</h2>
+                </div>
+                <a asp-controller="Albums" asp-action="Index" asp-route-artist="@Model.ArtistId" class="btn btn-outline-primary btn-sm">
+                    View All <i class="bi bi-arrow-right ms-1"></i>
+                </a>
+            </div>
+            <div class="albums-grid">
+                @foreach (var album in otherAlbums)
+                {
+                    <a asp-action="Details" asp-route-id="@album.Id" class="album-card">
+                        <div class="album-cover">
+                            <img src="@(album.CoverImageUrl ?? "/uploads/albums/default-album.jpg")" alt="@album.Title" loading="lazy" />
+                            <div class="album-overlay">
+                                <button class="play-btn" onclick="event.preventDefault(); playAlbum(@album.Id);">
+                                    <i class="bi bi-play-fill"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="album-info">
+                            <h4>@album.Title</h4>
+                            <p>@(album.Artist?.Name ?? "Various Artists")</p>
+                            <span class="album-meta">@album.Songs?.Count() songs</span>
+                        </div>
+                    </a>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+<style>
+    .album-detail-page {
+        padding-bottom: 40px;
+    }
+    
+    .album-header {
+        display: flex;
+        gap: 32px;
+        margin-bottom: 40px;
+        padding-bottom: 32px;
+        border-bottom: 1px solid var(--ml-border);
+    }
+    
+    .album-cover-large {
+        width: 280px;
+        height: 280px;
+        flex-shrink: 0;
+    }
+    
+    .album-cover-large img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: var(--ml-radius-lg);
+        box-shadow: var(--ml-shadow-lg);
+    }
+    
+    .album-header-info {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+    }
+    
+    .content-type {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        font-weight: 600;
+        color: var(--ml-text-muted);
+        margin-bottom: 8px;
+    }
+    
+    .album-header-info h1 {
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin-bottom: 16px;
+    }
+    
+    .album-meta-info {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 16px;
+        flex-wrap: wrap;
+        color: var(--ml-text-muted);
+    }
+    
+    .artist-link {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--ml-text);
+        font-weight: 500;
+    }
+    
+    .artist-link img {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+    
+    .separator {
+        color: var(--ml-text-dark);
+    }
+    
+    .album-description {
+        color: var(--ml-text-muted);
+        margin-bottom: 24px;
+        max-width: 600px;
+    }
+    
+    .album-actions-main {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+    
+    /* Track List */
+    .track-list-section {
+        margin-bottom: 48px;
+    }
+    
+    .track-list-header {
+        display: grid;
+        grid-template-columns: 48px 1fr 80px 60px 100px;
+        gap: 16px;
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--ml-border);
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        color: var(--ml-text-muted);
+        font-weight: 600;
+    }
+    
+    .track-item {
+        display: grid;
+        grid-template-columns: 48px 1fr 80px 60px 100px;
+        gap: 16px;
+        align-items: center;
+        padding: 12px 16px;
+        border-radius: var(--ml-radius);
+        transition: var(--ml-transition);
+    }
+    
+    .track-item:hover {
+        background: var(--ml-surface);
+    }
+    
+    .track-number {
+        text-align: center;
+        color: var(--ml-text-muted);
+        position: relative;
+    }
+    
+    .track-number .num {
+        display: block;
+    }
+    
+    .play-btn-mini {
+        display: none;
+        position: absolute;
+        inset: 0;
+        background: transparent;
+        border: none;
+        color: var(--ml-text);
+        cursor: pointer;
+    }
+    
+    .track-item:hover .num {
+        display: none;
+    }
+    
+    .track-item:hover .play-btn-mini {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .track-title {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+    }
+    
+    .track-cover {
+        width: 40px;
+        height: 40px;
+        border-radius: var(--ml-radius-sm);
+        object-fit: cover;
+    }
+    
+    .track-info {
+        min-width: 0;
+    }
+    
+    .track-info a {
+        display: block;
+        color: var(--ml-text);
+        font-weight: 500;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    .track-info a:hover {
+        color: var(--ml-primary);
+    }
+    
+    .track-info span {
+        display: block;
+        font-size: 0.75rem;
+        color: var(--ml-text-muted);
+    }
+    
+    .track-plays, .track-duration {
+        font-size: 0.875rem;
+        color: var(--ml-text-muted);
+        text-align: right;
+    }
+    
+    .track-actions {
+        display: flex;
+        gap: 4px;
+        justify-content: flex-end;
+        opacity: 0;
+        transition: var(--ml-transition);
+    }
+    
+    .track-item:hover .track-actions {
+        opacity: 1;
+    }
+    
+    @@media (max-width: 768px) {
+        .album-header {
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+        
+        .album-cover-large {
+            width: 200px;
+            height: 200px;
+        }
+        
+        .album-header-info h1 {
+            font-size: 1.75rem;
+        }
+        
+        .album-meta-info, .album-actions-main {
+            justify-content: center;
+        }
+        
+        .track-list-header,
+        .track-item {
+            grid-template-columns: 40px 1fr 60px 80px;
+        }
+        
+        .track-plays {
+            display: none !important;
+        }
+    }
+</style>
+
+@section Scripts {
+    <script>
+        function shuffleAlbum(albumId) {
+            fetch(`/Albums/GetAlbumSongs/${albumId}`)
+                .then(res => res.json())
+                .then(songs => {
+                    const shuffled = songs.sort(() => Math.random() - 0.5);
+                    playMultipleSongs(shuffled.map(s => s.id));
+                });
+        }
+        
+        function addAlbumToPlaylist(albumId) {
+            // Open add to playlist modal with album songs
+            alert('Feature is under development');
+        }
+    </script>
+}
+
+@functions {
+    string FormatDuration(int seconds)
+    {
+        var span = TimeSpan.FromSeconds(seconds);
+        return span.Hours > 0 ? span.ToString(@"h\:mm\:ss") : span.ToString(@"m\:ss");
+    }
+    
+    string FormatTotalDuration(int seconds)
+    {
+        var span = TimeSpan.FromSeconds(seconds);
+        if (span.TotalHours >= 1)
+            return $"{(int)span.TotalHours} hr {span.Minutes} min";
+        return $"{span.Minutes} min";
+    }
+    
+    string FormatNumber(int number)
+    {
+        if (number >= 1000000) return (number / 1000000.0).ToString("0.#") + "M";
+        if (number >= 1000) return (number / 1000.0).ToString("0.#") + "K";
+        return number.ToString();
+    }
+}

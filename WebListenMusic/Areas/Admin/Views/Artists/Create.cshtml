@@ -1,0 +1,119 @@
+@model AdminArtistFormViewModel
+@{
+    ViewData["Title"] = "Add New Artist";
+}
+
+<div class="page-header">
+    <div>
+        <h1>Add New Artist</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a asp-action="Index" asp-controller="Dashboard">Dashboard</a></li>
+                <li class="breadcrumb-item"><a asp-action="Index">Artists</a></li>
+                <li class="breadcrumb-item active">Add New</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="admin-card">
+            <div class="admin-card-body">
+                <form asp-action="Create" method="post" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label asp-for="Name" class="form-label">Artist Name <span class="text-danger">*</span></label>
+                        <input asp-for="Name" class="form-control" placeholder="Enter artist name" />
+                        <span asp-validation-for="Name" class="text-danger"></span>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label asp-for="Bio" class="form-label">Biography</label>
+                        <textarea asp-for="Bio" class="form-control" rows="5" placeholder="Artist biography..."></textarea>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <div class="form-check">
+                            <input asp-for="IsVerified" class="form-check-input" type="checkbox" />
+                            <label asp-for="IsVerified" class="form-check-label">
+                                <i class="bi bi-patch-check-fill text-primary me-1"></i>Verified Artist
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="form-label">Artist Image</label>
+                        <div class="cover-upload-area" id="coverUploadArea">
+                            <input asp-for="ImageFile" type="file" class="d-none" id="coverInput" accept="image/*" />
+                            <div class="upload-placeholder" id="uploadPlaceholder">
+                                <i class="bi bi-person-bounding-box"></i>
+                                <p>Click to select image</p>
+                                <span class="text-muted">PNG, JPG (Max 5MB)</span>
+                            </div>
+                            <img id="coverPreview" class="cover-preview d-none" />
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-lg me-2"></i>Add Artist
+                        </button>
+                        <a asp-action="Index" class="btn btn-secondary">
+                            <i class="bi bi-x-lg me-2"></i>Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        document.getElementById('coverUploadArea').addEventListener('click', function() {
+            document.getElementById('coverInput').click();
+        });
+        
+        document.getElementById('coverInput').addEventListener('change', function(e) {
+            if (e.target.files && e.target.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    document.getElementById('coverPreview').src = event.target.result;
+                    document.getElementById('coverPreview').classList.remove('d-none');
+                    document.getElementById('uploadPlaceholder').classList.add('d-none');
+                };
+                reader.readAsDataURL(e.target.files[0]);
+            }
+        });
+    </script>
+}
+
+<style>
+    .cover-upload-area {
+        border: 2px dashed var(--ml-border);
+        border-radius: var(--ml-radius-lg);
+        padding: 40px;
+        text-align: center;
+        cursor: pointer;
+        transition: var(--ml-transition);
+    }
+    
+    .cover-upload-area:hover {
+        border-color: var(--ml-primary);
+        background: rgba(var(--ml-primary-rgb), 0.05);
+    }
+    
+    .upload-placeholder i {
+        font-size: 3rem;
+        color: var(--ml-text-muted);
+        margin-bottom: 16px;
+    }
+    
+    .cover-preview {
+        max-width: 200px;
+        max-height: 200px;
+        object-fit: cover;
+        border-radius: 50%;
+    }
+</style>

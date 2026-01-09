@@ -1,0 +1,200 @@
+@model List<FavoriteSong>
+@{
+    ViewData["Title"] = "Favorite Songs";
+    var currentPage = ViewBag.CurrentPage ?? 1;
+    var totalPages = ViewBag.TotalPages ?? 1;
+    var totalItems = ViewBag.TotalItems ?? 0;
+    
+    string FormatDuration(int seconds)
+    {
+        var mins = seconds / 60;
+        var secs = seconds % 60;
+        return $"{mins}:{secs:D2}";
+    }
+    
+    string FormatNumber(int number)
+    {
+        if (number >= 1000000) return $"{number / 1000000.0:F1}M";
+        if (number >= 1000) return $"{number / 1000.0:F1}K";
+        return number.ToString();
+    }
+}
+
+<div class="page-header-customer">
+    <div>
+        <h1><i class="bi bi-heart-fill text-danger me-2"></i>Favorite Songs</h1>
+        <p class="text-muted">@totalItems songs you've liked</p>
+    </div>
+    @if (Model.Any())
+    {
+        <div class="d-flex gap-2">
+            <button class="btn btn-primary" onclick="playAllFavorites()">
+                <i class="bi bi-play-fill me-2"></i>Play All
+            </button>
+            <button class="btn btn-outline-light" onclick="shuffleFavorites()">
+                <i class="bi bi-shuffle me-2"></i>Shuffle
+            </button>
+        </div>
+    }
+</div>
+
+@if (!Model.Any())
+{
+    <div class="empty-state">
+        <i class="bi bi-heart"></i>
+        <h3>No Favorite Songs Yet</h3>
+        <p>Click the heart icon on songs to add them to your favorites</p>
+        <a asp-controller="Songs" asp-action="Index" class="btn btn-primary">Explore Songs</a>
+    </div>
+}
+else
+{
+    <div class="songs-grid">
+        @foreach (var fav in Model)
+        {
+            var song = fav.Song;
+            if (song == null) continue;
+            
+            <div class="song-card" data-song-id="@song.Id">
+                <div class="song-card-cover">
+                    <img src="@(song.CoverImageUrl ?? "/images/default-song.svg")" alt="@song.Title" loading="lazy" onerror="this.src='/images/default-song.svg';" />
+                    <div class="song-card-overlay">
+                        <button class="play-btn" onclick="playSong(@song.Id)">
+                            <i class="bi bi-play-fill"></i>
+                        </button>
+                    </div>
+                    @if (song.IsFeatured)
+                    {
+                        <span class="song-badge featured">
+                            <i class="bi bi-star-fill"></i>
+                        </span>
+                    }
+                </div>
+                <div class="song-card-info">
+                    <h4 class="song-title">
+                        <a asp-controller="Songs" asp-action="Details" asp-route-id="@song.Id">@song.Title</a>
+                    </h4>
+                    <p class="song-artist">
+                        @if (song.Artist != null)
+                        {
+                            <a asp-controller="Artists" asp-action="Details" asp-route-id="@song.ArtistId">@song.Artist.Name</a>
+                        }
+                        else
+                        {
+                            <span>Unknown Artist</span>
+                        }
+                    </p>
+                    <div class="song-meta">
+                        <span><i class="bi bi-play-circle"></i> @FormatNumber(song.PlayCount)</span>
+                        <span><i class="bi bi-clock"></i> @FormatDuration(song.Duration)</span>
+                    </div>
+                    <div class="song-card-actions">
+                        <button class="btn-icon active" onclick="toggleFavorite(@song.Id, this)" title="Remove from favorites">
+                            <i class="bi bi-heart-fill"></i>
+                        </button>
+                        <button class="btn-icon" onclick="addToPlaylist(@song.Id)" title="Add to playlist">
+                            <i class="bi bi-plus-circle"></i>
+                        </button>
+                        <div class="dropdown d-inline-block">
+                            <button class="btn-icon" data-bs-toggle="dropdown">
+                                <i class="bi bi-three-dots"></i>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end">
+                                <li><a class="dropdown-item" href="#" onclick="addToQueue(@song.Id)"><i class="bi bi-list-ul me-2"></i>Add to Queue</a></li>
+                                @if (!string.IsNullOrEmpty(song.AudioUrl))
+                                {
+                                    <li><a class="dropdown-item" asp-controller="Songs" asp-action="Download" asp-route-id="@song.Id"><i class="bi bi-download me-2"></i>Download</a></li>
+                                }
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" asp-controller="Songs" asp-action="Details" asp-route-id="@song.Id"><i class="bi bi-info-circle me-2"></i>View Details</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+    
+    @* Pagination *@
+    @if (totalPages > 1)
+    {
+        <nav class="mt-4">
+            <ul class="pagination justify-content-center">
+                <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                    <a class="page-link" asp-action="Favorites" asp-route-page="@(currentPage - 1)">
+                        <i class="bi bi-chevron-left"></i>
+                    </a>
+                </li>
+                @for (int i = 1; i <= totalPages; i++)
+                {
+                    <li class="page-item @(i == currentPage ? "active" : "")">
+                        <a class="page-link" asp-action="Favorites" asp-route-page="@i">@i</a>
+                    </li>
+                }
+                <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                    <a class="page-link" asp-action="Favorites" asp-route-page="@(currentPage + 1)">
+                        <i class="bi bi-chevron-right"></i>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+    }
+}
+
+@section Scripts {
+    <script>
+        // Toggle favorite and remove from page
+        async function toggleFavorite(songId, btn) {
+            try {
+                const response = await fetch('/Profile/ToggleFavorite', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || ''
+                    },
+                    body: `songId=${songId}`
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    // Remove card from favorites page
+                    const card = btn.closest('.song-card');
+                    if (card) {
+                        card.style.transition = 'opacity 0.3s, transform 0.3s';
+                        card.style.opacity = '0';
+                        card.style.transform = 'scale(0.9)';
+                        setTimeout(() => card.remove(), 300);
+                    }
+                    showToast(result.message, 'success');
+                }
+            } catch (err) {
+                console.error('Error:', err);
+                showToast('Error updating favorite', 'error');
+            }
+        }
+        
+        // Play all favorites
+        function playAllFavorites() {
+            const songIds = [...document.querySelectorAll('.song-card')].map(c => c.dataset.songId);
+            if (songIds.length > 0) {
+                playSong(songIds[0]);
+                // Add rest to queue
+                songIds.slice(1).forEach(id => addToQueue(id));
+            }
+        }
+        
+        // Shuffle favorites
+        function shuffleFavorites() {
+            const songIds = [...document.querySelectorAll('.song-card')].map(c => c.dataset.songId);
+            if (songIds.length > 0) {
+                // Shuffle array
+                for (let i = songIds.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [songIds[i], songIds[j]] = [songIds[j], songIds[i]];
+                }
+                playSong(songIds[0]);
+                songIds.slice(1).forEach(id => addToQueue(id));
+            }
+        }
+    </script>
+}

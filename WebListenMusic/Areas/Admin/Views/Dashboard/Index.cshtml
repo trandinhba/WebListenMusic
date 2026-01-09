@@ -1,0 +1,251 @@
+@model AdminDashboardViewModel
+@{
+    ViewData["Title"] = "Dashboard";
+}
+
+<div class="page-header">
+    <div>
+        <h1>Dashboard</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item active">Overview</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<!-- Stats Cards -->
+<div class="dashboard-stats">
+    <div class="stat-card">
+        <div class="stat-icon blue">
+            <i class="bi bi-music-note-list"></i>
+        </div>
+        <div class="stat-info">
+            <h3>@Model.TotalSongs</h3>
+            <p>Songs</p>
+            @if (Model.NewSongsThisMonth > 0)
+            {
+                <div class="stat-trend up">
+                    <i class="bi bi-arrow-up"></i> +@Model.NewSongsThisMonth this month
+                </div>
+            }
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon green">
+            <i class="bi bi-disc-fill"></i>
+        </div>
+        <div class="stat-info">
+            <h3>@Model.TotalAlbums</h3>
+            <p>Albums</p>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon purple">
+            <i class="bi bi-person-fill"></i>
+        </div>
+        <div class="stat-info">
+            <h3>@Model.TotalArtists</h3>
+            <p>Artists</p>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon orange">
+            <i class="bi bi-people-fill"></i>
+        </div>
+        <div class="stat-info">
+            <h3>@Model.TotalUsers</h3>
+            <p>Users</p>
+            @if (Model.NewUsersThisMonth > 0)
+            {
+                <div class="stat-trend up">
+                    <i class="bi bi-arrow-up"></i> +@Model.NewUsersThisMonth this month
+                </div>
+            }
+        </div>
+    </div>
+    
+    @if (Model.PendingReports > 0)
+    {
+        <div class="stat-card">
+            <div class="stat-icon red">
+                <i class="bi bi-flag-fill"></i>
+            </div>
+            <div class="stat-info">
+                <h3>@Model.PendingReports</h3>
+                <p>Pending Reports</p>
+            </div>
+        </div>
+    }
+</div>
+
+<!-- Dashboard Grid -->
+<div class="dashboard-grid">
+    <div class="dashboard-main">
+        <!-- Chart -->
+        <div class="admin-card mb-4">
+            <div class="admin-card-header">
+                <h3><i class="bi bi-graph-up me-2"></i>Statistics - Last 6 Months</h3>
+            </div>
+            <div class="admin-card-body">
+                <div class="chart-container" style="height: 300px;">
+                    <canvas id="uploadsChart"
+                            data-labels='@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MonthLabels))'
+                            data-songs='@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.SongUploadsPerMonth))'
+                            data-users='@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.UserRegistrationsPerMonth))'>
+                    </canvas>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Top Songs -->
+        <div class="admin-card">
+            <div class="admin-card-header">
+                <h3><i class="bi bi-trophy me-2"></i>Top 10 Songs</h3>
+                <a asp-action="Index" asp-controller="Songs" class="btn btn-sm btn-secondary">View All</a>
+            </div>
+            <div class="admin-card-body p-0">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 50px;">#</th>
+                            <th>Song</th>
+                            <th>Plays</th>
+                            <th>Likes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (int i = 0; i < Model.TopSongs.Count; i++)
+                        {
+                            var song = Model.TopSongs[i];
+                            <tr>
+                                <td>@(i + 1)</td>
+                                <td>
+                                    <div class="cell-title">
+                                        <img src="@(song.CoverImageUrl ?? "/uploads/covers/default-song.jpg")" alt="@song.Title" />
+                                        <div>
+                                            <div class="title-text">@song.Title</div>
+                                            <div class="subtitle-text">@(song.Artist?.Name ?? "Unknown Artist")</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>@song.PlayCount.ToString("N0")</td>
+                                <td>@song.LikeCount.ToString("N0")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <div class="dashboard-sidebar">
+        <!-- Quick Actions -->
+        <div class="admin-card mb-4">
+            <div class="admin-card-header">
+                <h3><i class="bi bi-lightning me-2"></i>Quick Actions</h3>
+            </div>
+            <div class="admin-card-body">
+                <div class="quick-actions">
+                    <a asp-action="Create" asp-controller="Songs" class="quick-action-btn">
+                        <i class="bi bi-music-note-beamed"></i>
+                        <span>Add Song</span>
+                    </a>
+                    <a asp-action="Create" asp-controller="Albums" class="quick-action-btn">
+                        <i class="bi bi-disc"></i>
+                        <span>Add Album</span>
+                    </a>
+                    <a asp-action="Create" asp-controller="Artists" class="quick-action-btn">
+                        <i class="bi bi-person-plus"></i>
+                        <span>Add Artist</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Recent Songs -->
+        <div class="admin-card mb-4">
+            <div class="admin-card-header">
+                <h3><i class="bi bi-clock-history me-2"></i>New Songs</h3>
+            </div>
+            <div class="admin-card-body">
+                <ul class="recent-list">
+                    @foreach (var song in Model.RecentSongs)
+                    {
+                        <li class="recent-item">
+                            <img src="@(song.CoverImageUrl ?? "/uploads/covers/default-song.jpg")" alt="@song.Title" class="recent-item-img" />
+                            <div class="recent-item-info">
+                                <div class="recent-item-title">@song.Title</div>
+                                <div class="recent-item-subtitle">@(song.Artist?.Name ?? "Unknown")</div>
+                            </div>
+                            <div class="recent-item-meta">
+                                <div class="recent-item-date">@song.CreatedAt.ToString("dd/MM")</div>
+                            </div>
+                        </li>
+                    }
+                </ul>
+            </div>
+        </div>
+        
+        <!-- Recent Users -->
+        <div class="admin-card mb-4">
+            <div class="admin-card-header">
+                <h3><i class="bi bi-person-plus me-2"></i>New Users</h3>
+            </div>
+            <div class="admin-card-body">
+                <ul class="recent-list">
+                    @foreach (var user in Model.RecentUsers)
+                    {
+                        <li class="recent-item">
+                            <img src="@(user.AvatarUrl ?? "/uploads/avatars/default.jpg")" alt="@user.DisplayName" class="recent-item-img rounded" />
+                            <div class="recent-item-info">
+                                <div class="recent-item-title">@(user.DisplayName ?? user.Email)</div>
+                                <div class="recent-item-subtitle">@user.Email</div>
+                            </div>
+                            <div class="recent-item-meta">
+                                <div class="recent-item-date">@user.CreatedAt.ToString("dd/MM")</div>
+                            </div>
+                        </li>
+                    }
+                </ul>
+            </div>
+        </div>
+        
+        <!-- Pending Reports -->
+        @if (Model.RecentReports.Any())
+        {
+            <div class="admin-card">
+                <div class="admin-card-header">
+                    <h3><i class="bi bi-flag me-2"></i>Pending Reports</h3>
+                    <a asp-action="Index" asp-controller="Reports" class="btn btn-sm btn-warning">View All</a>
+                </div>
+                <div class="admin-card-body">
+                    <ul class="recent-list">
+                        @foreach (var report in Model.RecentReports)
+                        {
+                            <li class="recent-item">
+                                <div class="activity-icon report">
+                                    <i class="bi bi-flag"></i>
+                                </div>
+                                <div class="recent-item-info">
+                                    <div class="recent-item-title">@report.Title</div>
+                                    <div class="recent-item-subtitle">@(report.User?.DisplayName ?? report.User?.Email)</div>
+                                </div>
+                                <div class="recent-item-meta">
+                                    <span class="status-badge pending">Pending</span>
+                                </div>
+                            </li>
+                        }
+                    </ul>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+}

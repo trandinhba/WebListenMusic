@@ -1,0 +1,245 @@
+@model Album
+@{
+    ViewData["Title"] = "Album Details";
+}
+
+<div class="page-header">
+    <div>
+        <h1>Album Details</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a asp-action="Index" asp-controller="Dashboard">Dashboard</a></li>
+                <li class="breadcrumb-item"><a asp-action="Index">Albums</a></li>
+                <li class="breadcrumb-item active">@Model.Title</li>
+            </ol>
+        </nav>
+    </div>
+    <div class="d-flex gap-2">
+        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary">
+            <i class="bi bi-pencil me-2"></i>Edit
+        </a>
+        <form asp-action="Delete" asp-route-id="@Model.Id" method="post" class="d-inline"
+              onsubmit="return confirm('Are you sure you want to delete this album?');">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn btn-danger">
+                <i class="bi bi-trash me-2"></i>Delete
+            </button>
+        </form>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <!-- Album Info -->
+        <div class="admin-card mb-4">
+            <div class="admin-card-body">
+                <div class="album-detail-header">
+                    <img src="@(Model.CoverImageUrl ?? "/uploads/albums/default-album.jpg")" 
+                         alt="@Model.Title" 
+                         class="album-detail-cover" />
+                    <div class="album-detail-info">
+                        <h2>@Model.Title</h2>
+                        <p class="album-artist">
+                            <i class="bi bi-person me-1"></i>
+                            @(Model.Artist?.Name ?? "Unknown Artist")
+                        </p>
+                        @if (Model.ReleaseDate.HasValue)
+                        {
+                            <p class="album-release">
+                                <i class="bi bi-calendar me-1"></i>
+                                @Model.ReleaseDate.Value.ToString("dd/MM/yyyy")
+                            </p>
+                        }
+                        <div class="album-stats-row">
+                            <span><i class="bi bi-music-note-list me-1"></i>@(Model.Songs?.Count ?? 0) songs</span>
+                            <span><i class="bi bi-play-circle me-1"></i>@((Model.Songs?.Sum(s => s.PlayCount) ?? 0).ToString("N0")) plays</span>
+                        </div>
+                    </div>
+                </div>
+                
+                @if (!string.IsNullOrEmpty(Model.Description))
+                {
+                    <div class="mt-4">
+                        <h5>Description</h5>
+                        <p class="text-muted">@Html.Raw(Model.Description.Replace("\n", "<br/>"))</p>
+                    </div>
+                }
+            </div>
+        </div>
+        
+        <!-- Songs List -->
+        <div class="admin-card">
+            <div class="admin-card-header">
+                <h3><i class="bi bi-music-note-list me-2"></i>Song List</h3>
+            </div>
+            <div class="admin-card-body p-0">
+                @if (Model.Songs != null && Model.Songs.Any())
+                {
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 50px;">#</th>
+                                <th>Song</th>
+                                <th style="width: 120px;">Duration</th>
+                                <th style="width: 100px;">Plays</th>
+                                <th style="width: 100px;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @{
+                                var index = 0;
+                            }
+                            @foreach (var song in Model.Songs)
+                            {
+                                index++;
+                                <tr>
+                                    <td>@index</td>
+                                    <td>
+                                        <div class="cell-title">
+                                            <img src="@(song.CoverImageUrl ?? "/uploads/covers/default-song.jpg")" alt="@song.Title" />
+                                            <div>
+                                                <div class="title-text">@song.Title</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>@TimeSpan.FromSeconds(song.Duration).ToString(@"m\:ss")</td>
+                                    <td>@song.PlayCount.ToString("N0")</td>
+                                    <td>
+                                        <div class="action-buttons">
+                                            <a asp-action="Edit" asp-controller="Songs" asp-route-id="@song.Id" 
+                                               class="btn btn-icon btn-sm" title="Edit">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+                else
+                {
+                    <div class="empty-state text-center py-4">
+                        <i class="bi bi-music-note-beamed" style="font-size: 2rem; color: var(--ml-text-muted);"></i>
+                        <p class="mt-2 text-muted">No songs in this album yet</p>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="admin-card mb-4">
+            <div class="admin-card-header">
+                <h3><i class="bi bi-gear me-2"></i>Status</h3>
+            </div>
+            <div class="admin-card-body">
+                <ul class="detail-stats">
+                    <li>
+                        <span class="stat-label">Status</span>
+                        <span class="status-badge @(Model.IsPublished ? "active" : "inactive")">
+                            @(Model.IsPublished ? "Active" : "Inactive")
+                        </span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="admin-card">
+            <div class="admin-card-header">
+                <h3><i class="bi bi-clock-history me-2"></i>Information</h3>
+            </div>
+            <div class="admin-card-body">
+                <ul class="detail-stats">
+                    <li>
+                        <span class="stat-label">Created Date</span>
+                        <span class="stat-value">@Model.CreatedAt.ToString("dd/MM/yyyy HH:mm")</span>
+                    </li>
+                    @if (Model.UpdatedAt.HasValue)
+                    {
+                        <li>
+                            <span class="stat-label">Updated</span>
+                            <span class="stat-value">@Model.UpdatedAt.Value.ToString("dd/MM/yyyy HH:mm")</span>
+                        </li>
+                    }
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .album-detail-header {
+        display: flex;
+        gap: 24px;
+        align-items: flex-start;
+    }
+    
+    .album-detail-cover {
+        width: 200px;
+        height: 200px;
+        object-fit: cover;
+        border-radius: var(--ml-radius-lg);
+    }
+    
+    .album-detail-info h2 {
+        font-size: 1.75rem;
+        font-weight: 700;
+        margin-bottom: 12px;
+    }
+    
+    .album-artist, .album-release {
+        color: var(--ml-text-muted);
+        margin-bottom: 8px;
+    }
+    
+    .album-stats-row {
+        display: flex;
+        gap: 20px;
+        margin-top: 12px;
+        color: var(--ml-text-muted);
+    }
+    
+    .detail-stats {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+    
+    .detail-stats li {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 0;
+        border-bottom: 1px solid var(--ml-border);
+    }
+    
+    .detail-stats li:last-child {
+        border-bottom: none;
+    }
+    
+    .stat-label {
+        color: var(--ml-text-muted);
+    }
+    
+    .stat-value {
+        font-weight: 500;
+    }
+    
+    .status-badge {
+        padding: 4px 12px;
+        border-radius: var(--ml-radius-full);
+        font-size: 0.8125rem;
+        font-weight: 500;
+    }
+    
+    .status-badge.active {
+        background: rgba(34, 197, 94, 0.15);
+        color: #22c55e;
+    }
+    
+    .status-badge.inactive {
+        background: rgba(239, 68, 68, 0.15);
+        color: #ef4444;
+    }
+</style>

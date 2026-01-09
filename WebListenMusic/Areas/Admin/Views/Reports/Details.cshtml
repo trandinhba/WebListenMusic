@@ -1,0 +1,271 @@
+@model Report
+@{
+    ViewData["Title"] = "Report Details";
+}
+
+<div class="page-header">
+    <div>
+        <h1>Report Details #@Model.Id</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a asp-action="Index" asp-controller="Dashboard">Dashboard</a></li>
+                <li class="breadcrumb-item"><a asp-action="Index">Reports</a></li>
+                <li class="breadcrumb-item active">Details</li>
+            </ol>
+        </nav>
+    </div>
+    <form asp-action="Delete" asp-route-id="@Model.Id" method="post" class="d-inline"
+          onsubmit="return confirm('Are you sure you want to delete this report?');">
+        @Html.AntiForgeryToken()
+        <button type="submit" class="btn btn-danger">
+            <i class="bi bi-trash me-2"></i>Delete
+        </button>
+    </form>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <!-- Report Content -->
+        <div class="admin-card mb-4">
+            <div class="admin-card-header">
+                <h3><i class="bi bi-file-text me-2"></i>Report Content</h3>
+            </div>
+            <div class="admin-card-body">
+                <h4>@Model.Title</h4>
+                <div class="report-content mt-3">
+                    @Html.Raw(Model.Content.Replace("\n", "<br/>"))
+                </div>
+            </div>
+        </div>
+
+        <!-- Related Items -->
+        @if (Model.RelatedSong != null)
+        {
+            <div class="admin-card mb-4">
+                <div class="admin-card-header">
+                    <h3><i class="bi bi-music-note me-2"></i>Related Song</h3>
+                </div>
+                <div class="admin-card-body">
+                    <div class="related-item">
+                        <img src="@(Model.RelatedSong.CoverImageUrl ?? "/uploads/covers/default-song.jpg")" alt="@Model.RelatedSong.Title" />
+                        <div>
+                            <h5>@Model.RelatedSong.Title</h5>
+                            <p class="text-muted mb-0">@(Model.RelatedSong.Artist?.Name ?? "Unknown Artist")</p>
+                        </div>
+                        <a asp-action="Details" asp-controller="Songs" asp-route-id="@Model.RelatedSong.Id" class="btn btn-sm btn-outline-primary ms-auto">
+                            View Details
+                        </a>
+                    </div>
+                </div>
+            </div>
+        }
+
+        @if (Model.RelatedAlbum != null)
+        {
+            <div class="admin-card mb-4">
+                <div class="admin-card-header">
+                    <h3><i class="bi bi-disc me-2"></i>Related Album</h3>
+                </div>
+                <div class="admin-card-body">
+                    <div class="related-item">
+                        <img src="@(Model.RelatedAlbum.CoverImageUrl ?? "/uploads/albums/default-album.jpg")" alt="@Model.RelatedAlbum.Title" />
+                        <div>
+                            <h5>@Model.RelatedAlbum.Title</h5>
+                            <p class="text-muted mb-0">@(Model.RelatedAlbum.Artist?.Name ?? "Unknown Artist")</p>
+                        </div>
+                        <a asp-action="Details" asp-controller="Albums" asp-route-id="@Model.RelatedAlbum.Id" class="btn btn-sm btn-outline-primary ms-auto">
+                            View Details
+                        </a>
+                    </div>
+                </div>
+            </div>
+        }
+
+        <!-- Update Status -->
+        <div class="admin-card">
+            <div class="admin-card-header">
+                <h3><i class="bi bi-gear me-2"></i>Update Status</h3>
+            </div>
+            <div class="admin-card-body">
+                <form asp-action="UpdateStatus" method="post">
+                    <input type="hidden" name="id" value="@Model.Id" />
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Status</label>
+                        <select name="status" class="form-select">
+                            <option value="@ReportStatus.Pending" selected="@(Model.Status == ReportStatus.Pending)">Pending</option>
+                            <option value="@ReportStatus.InProgress" selected="@(Model.Status == ReportStatus.InProgress)">In Progress</option>
+                            <option value="@ReportStatus.Resolved" selected="@(Model.Status == ReportStatus.Resolved)">Resolved</option>
+                            <option value="@ReportStatus.Dismissed" selected="@(Model.Status == ReportStatus.Dismissed)">Dismissed</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Admin Note</label>
+                        <textarea name="adminNote" class="form-control" rows="3" placeholder="Enter note...">@Model.AdminNote</textarea>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-lg me-2"></i>Update
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <!-- Status Info -->
+        <div class="admin-card mb-4">
+            <div class="admin-card-header">
+                <h3><i class="bi bi-info-circle me-2"></i>Information</h3>
+            </div>
+            <div class="admin-card-body">
+                <ul class="detail-stats">
+                    <li>
+                        <span class="stat-label">Status</span>
+                        <span class="status-badge @GetStatusClass(Model.Status)">
+                            @GetStatusText(Model.Status)
+                        </span>
+                    </li>
+                    <li>
+                        <span class="stat-label">Report Type</span>
+                        <span class="stat-value">@GetTypeText(Model.Type)</span>
+                    </li>
+                    <li>
+                        <span class="stat-label">Reported By</span>
+                        <span class="stat-value">@(Model.User?.DisplayName ?? Model.User?.Email ?? "Unknown")</span>
+                    </li>
+                    <li>
+                        <span class="stat-label">Submitted Date</span>
+                        <span class="stat-value">@Model.CreatedAt.ToString("dd/MM/yyyy HH:mm")</span>
+                    </li>
+                    @if (Model.ResolvedAt.HasValue)
+                    {
+                        <li>
+                            <span class="stat-label">Resolved Date</span>
+                            <span class="stat-value">@Model.ResolvedAt.Value.ToString("dd/MM/yyyy HH:mm")</span>
+                        </li>
+                    }
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+@functions {
+    string GetStatusClass(ReportStatus status)
+    {
+        return status switch
+        {
+            ReportStatus.Pending => "pending",
+            ReportStatus.InProgress => "in-progress",
+            ReportStatus.Resolved => "resolved",
+            ReportStatus.Dismissed => "dismissed",
+            _ => ""
+        };
+    }
+
+    string GetStatusText(ReportStatus status)
+    {
+        return status switch
+        {
+            ReportStatus.Pending => "Pending",
+            ReportStatus.InProgress => "In Progress",
+            ReportStatus.Resolved => "Resolved",
+            ReportStatus.Dismissed => "Dismissed",
+            _ => "Unknown"
+        };
+    }
+
+    string GetTypeText(ReportType type)
+    {
+        return type switch
+        {
+            ReportType.Copyright => "Copyright Violation",
+            ReportType.InappropriateContent => "Inappropriate Content",
+            ReportType.TechnicalIssue => "Technical Issue",
+            ReportType.Spam => "Spam",
+            ReportType.Other => "Other",
+            _ => "Unknown"
+        };
+    }
+}
+
+<style>
+    .report-content {
+        background: var(--ml-surface-light);
+        padding: 20px;
+        border-radius: var(--ml-radius);
+        line-height: 1.6;
+    }
+
+    .related-item {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
+
+    .related-item img {
+        width: 64px;
+        height: 64px;
+        object-fit: cover;
+        border-radius: var(--ml-radius);
+    }
+
+    .related-item h5 {
+        margin-bottom: 4px;
+    }
+
+    .detail-stats {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .detail-stats li {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 0;
+        border-bottom: 1px solid var(--ml-border);
+    }
+
+    .detail-stats li:last-child {
+        border-bottom: none;
+    }
+
+    .stat-label {
+        color: var(--ml-text-muted);
+    }
+
+    .stat-value {
+        font-weight: 500;
+    }
+
+    .status-badge {
+        padding: 4px 12px;
+        border-radius: var(--ml-radius-full);
+        font-size: 0.8125rem;
+        font-weight: 500;
+    }
+
+    .status-badge.pending {
+        background: rgba(251, 191, 36, 0.15);
+        color: #fbbf24;
+    }
+
+    .status-badge.in-progress {
+        background: rgba(59, 130, 246, 0.15);
+        color: #3b82f6;
+    }
+
+    .status-badge.resolved {
+        background: rgba(34, 197, 94, 0.15);
+        color: #22c55e;
+    }
+
+    .status-badge.dismissed {
+        background: rgba(239, 68, 68, 0.15);
+        color: #ef4444;
+    }
+</style>

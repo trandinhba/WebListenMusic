@@ -1,0 +1,217 @@
+@model IEnumerable<Report>
+@{
+    ViewData["Title"] = "Reports Management";
+}
+
+<div class="page-header">
+    <div>
+        <h1>Reports Management</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a asp-action="Index" asp-controller="Dashboard">Dashboard</a></li>
+                <li class="breadcrumb-item active">Reports</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle me-2"></i>@TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<div class="admin-card">
+    <div class="admin-card-header">
+        <h3><i class="bi bi-flag me-2"></i>Reports List (@ViewBag.TotalItems)</h3>
+        <form asp-action="Index" method="get" class="d-flex gap-2">
+            <select name="status" class="form-select" style="width: 150px;" onchange="this.form.submit()">
+                <option value="">-- Status --</option>
+                <option value="Pending" selected="@(ViewBag.Status == ReportStatus.Pending)">Pending</option>
+                <option value="InProgress" selected="@(ViewBag.Status == ReportStatus.InProgress)">In Progress</option>
+                <option value="Resolved" selected="@(ViewBag.Status == ReportStatus.Resolved)">Resolved</option>
+                <option value="Dismissed" selected="@(ViewBag.Status == ReportStatus.Dismissed)">Dismissed</option>
+            </select>
+            <select name="type" class="form-select" style="width: 150px;" onchange="this.form.submit()">
+                <option value="">-- Type --</option>
+                <option value="Copyright" selected="@(ViewBag.Type == ReportType.Copyright)">Copyright</option>
+                <option value="InappropriateContent" selected="@(ViewBag.Type == ReportType.InappropriateContent)">Inappropriate Content</option>
+                <option value="TechnicalIssue" selected="@(ViewBag.Type == ReportType.TechnicalIssue)">Technical Issue</option>
+                <option value="Spam" selected="@(ViewBag.Type == ReportType.Spam)">Spam</option>
+                <option value="Other" selected="@(ViewBag.Type == ReportType.Other)">Other</option>
+            </select>
+            @if (ViewBag.Status != null || ViewBag.Type != null)
+            {
+                <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-x-lg"></i></a>
+            }
+        </form>
+    </div>
+    <div class="admin-card-body p-0">
+        @if (!Model.Any())
+        {
+            <div class="empty-state text-center py-5">
+                <i class="bi bi-flag" style="font-size: 3rem; color: var(--ml-text-muted);"></i>
+                <h5 class="mt-3">No reports yet</h5>
+            </div>
+        }
+        else
+        {
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th style="width: 50px;">#</th>
+                        <th>Title</th>
+                        <th>Type</th>
+                        <th>Reported By</th>
+                        <th style="width: 120px;">Status</th>
+                        <th style="width: 120px;">Created Date</th>
+                        <th style="width: 100px;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @{
+                        var index = (ViewBag.CurrentPage - 1) * 15;
+                    }
+                    @foreach (var report in Model)
+                    {
+                        index++;
+                        <tr>
+                            <td>@index</td>
+                            <td>
+                                <div class="cell-title">
+                                    <div>
+                                        <div class="title-text">@report.Title</div>
+                                        @if (!string.IsNullOrEmpty(report.Content))
+                                        {
+                                            <div class="subtitle-text">
+                                                @(report.Content.Length > 50 ? report.Content.Substring(0, 50) + "..." : report.Content)
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="badge @GetTypeBadgeClass(report.Type)">
+                                    @GetTypeDisplayName(report.Type)
+                                </span>
+                            </td>
+                            <td>
+                                @if (report.User != null)
+                                {
+                                    <span>@(report.User.DisplayName ?? report.User.Email)</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">Anonymous</span>
+                                }
+                            </td>
+                            <td>
+                                <span class="status-badge @GetStatusClass(report.Status)">
+                                    @GetStatusDisplayName(report.Status)
+                                </span>
+                            </td>
+                            <td>@report.CreatedAt.ToString("dd/MM/yyyy")</td>
+                            <td>
+                                <div class="action-buttons">
+                                    <a asp-action="Details" asp-route-id="@report.Id" class="btn btn-icon btn-sm" title="Details">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <form asp-action="Delete" asp-route-id="@report.Id" method="post" class="d-inline"
+                                          onsubmit="return confirm('Are you sure you want to delete?');">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-icon btn-sm text-danger" title="Delete">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+    
+    @if (ViewBag.TotalPages > 1)
+    {
+        <div class="admin-card-footer">
+            <nav aria-label="Page navigation">
+                <ul class="pagination justify-content-center mb-0">
+                    <li class="page-item @(ViewBag.CurrentPage == 1 ? "disabled" : "")">
+                        <a class="page-link" asp-action="Index" asp-route-page="@(ViewBag.CurrentPage - 1)"
+                           asp-route-status="@ViewBag.Status" asp-route-type="@ViewBag.Type">
+                            <i class="bi bi-chevron-left"></i>
+                        </a>
+                    </li>
+                    @for (int i = 1; i <= ViewBag.TotalPages; i++)
+                    {
+                        <li class="page-item @(i == ViewBag.CurrentPage ? "active" : "")">
+                            <a class="page-link" asp-action="Index" asp-route-page="@i"
+                               asp-route-status="@ViewBag.Status" asp-route-type="@ViewBag.Type">@i</a>
+                        </li>
+                    }
+                    <li class="page-item @(ViewBag.CurrentPage == ViewBag.TotalPages ? "disabled" : "")">
+                        <a class="page-link" asp-action="Index" asp-route-page="@(ViewBag.CurrentPage + 1)"
+                           asp-route-status="@ViewBag.Status" asp-route-type="@ViewBag.Type">
+                            <i class="bi bi-chevron-right"></i>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    }
+</div>
+
+@functions {
+    string GetTypeBadgeClass(ReportType type)
+    {
+        return type switch
+        {
+            ReportType.Copyright => "bg-danger",
+            ReportType.InappropriateContent => "bg-warning text-dark",
+            ReportType.TechnicalIssue => "bg-info",
+            ReportType.Spam => "bg-secondary",
+            ReportType.Other => "bg-primary",
+            _ => "bg-secondary"
+        };
+    }
+
+    string GetTypeDisplayName(ReportType type)
+    {
+        return type switch
+        {
+            ReportType.Copyright => "Copyright",
+            ReportType.InappropriateContent => "Inappropriate",
+            ReportType.TechnicalIssue => "Technical Issue",
+            ReportType.Spam => "Spam",
+            ReportType.Other => "Other",
+            _ => "Other"
+        };
+    }
+
+    string GetStatusClass(ReportStatus status)
+    {
+        return status switch
+        {
+            ReportStatus.Pending => "warning",
+            ReportStatus.InProgress => "info",
+            ReportStatus.Resolved => "active",
+            ReportStatus.Dismissed => "inactive",
+            _ => "inactive"
+        };
+    }
+
+    string GetStatusDisplayName(ReportStatus status)
+    {
+        return status switch
+        {
+            ReportStatus.Pending => "Pending",
+            ReportStatus.InProgress => "In Progress",
+            ReportStatus.Resolved => "Resolved",
+            ReportStatus.Dismissed => "Dismissed",
+            _ => "Unknown"
+        };
+    }
+}

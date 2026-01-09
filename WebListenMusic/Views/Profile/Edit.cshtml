@@ -1,0 +1,120 @@
+@model ApplicationUser
+@{
+    ViewData["Title"] = "Edit Profile";
+}
+
+<div class="form-page">
+    <div class="form-container-large">
+        <h1>Edit Profile</h1>
+
+        @if (TempData["Success"] != null)
+        {
+            <div class="alert alert-success">@TempData["Success"]</div>
+        }
+
+        <form asp-action="Edit" method="post" enctype="multipart/form-data">
+            @Html.AntiForgeryToken()
+
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="avatar-upload">
+                        <img src="@(Model.AvatarUrl ?? "/uploads/avatars/default.jpg")" alt="Avatar" id="avatarPreview" />
+                        <label for="avatarFile" class="avatar-upload-btn">
+                            <i class="bi bi-camera"></i>
+                            Change Photo
+                        </label>
+                        <input type="file" id="avatarFile" name="avatarFile" accept="image/*" hidden />
+                    </div>
+                </div>
+                <div class="col-md-8">
+                    <div class="mb-4">
+                        <label asp-for="DisplayName" class="form-label">Display Name</label>
+                        <input asp-for="DisplayName" class="form-control" />
+                        <span asp-validation-for="DisplayName" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-4">
+                        <label asp-for="Bio" class="form-label">Bio</label>
+                        <textarea asp-for="Bio" class="form-control" rows="4" placeholder="Tell us about yourself..."></textarea>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label">Email</label>
+                        <input type="text" value="@Model.Email" class="form-control" disabled />
+                        <small class="text-muted">Email cannot be changed</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex gap-3 mt-4">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-lg me-2"></i>Save Changes
+                </button>
+                <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    .form-page {
+        display: flex;
+        justify-content: center;
+        padding: 40px 0;
+    }
+
+    .form-container-large {
+        width: 100%;
+        max-width: 700px;
+        background: var(--ml-surface);
+        border-radius: var(--ml-radius-lg);
+        padding: 32px;
+    }
+
+    .form-container-large h1 {
+        font-size: 1.5rem;
+        margin-bottom: 24px;
+    }
+
+    .avatar-upload {
+        text-align: center;
+    }
+
+    .avatar-upload img {
+        width: 150px;
+        height: 150px;
+        object-fit: cover;
+        border-radius: 50%;
+        margin-bottom: 16px;
+        box-shadow: var(--ml-shadow);
+    }
+
+    .avatar-upload-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        background: var(--ml-surface-hover);
+        border-radius: var(--ml-radius);
+        cursor: pointer;
+        transition: var(--ml-transition);
+    }
+
+    .avatar-upload-btn:hover {
+        background: var(--ml-primary);
+    }
+</style>
+
+@section Scripts {
+    <script>
+        document.getElementById('avatarFile').addEventListener('change', function(e) {
+            if (e.target.files && e.target.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('avatarPreview').src = e.target.result;
+                };
+                reader.readAsDataURL(e.target.files[0]);
+            }
+        });
+    </script>
+}

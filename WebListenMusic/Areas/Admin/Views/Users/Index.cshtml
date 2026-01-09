@@ -1,0 +1,250 @@
+@model IEnumerable<AdminUserViewModel>
+@{
+    ViewData["Title"] = "User Management";
+}
+
+<div class="page-header">
+    <div>
+        <h1>User Management</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a asp-action="Index" asp-controller="Dashboard">Dashboard</a></li>
+                <li class="breadcrumb-item active">Users</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle me-2"></i>@TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-circle me-2"></i>@TempData["Error"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<div class="admin-table-container">
+    <div class="admin-table-header">
+        <h3><i class="bi bi-people me-2"></i>User List (@ViewBag.TotalItems)</h3>
+        <form asp-action="Index" method="get" class="d-flex gap-2">
+            <div class="input-group" style="width: 250px;">
+                <input type="text" name="search" class="form-control" placeholder="Search..." value="@ViewBag.Search" />
+                <button type="submit" class="btn btn-secondary">
+                    <i class="bi bi-search"></i>
+                </button>
+            </div>
+            <select name="isPremium" class="form-select" style="width: 150px;" onchange="this.form.submit()">
+                <option value="">-- Account Type --</option>
+                <option value="true" selected="@(ViewBag.IsPremium == true)">Premium</option>
+                <option value="false" selected="@(ViewBag.IsPremium == false)">Free</option>
+            </select>
+            @if (!string.IsNullOrEmpty(ViewBag.Search) || ViewBag.IsPremium != null)
+            {
+                <a asp-action="Index" class="btn btn-outline-secondary">
+                    <i class="bi bi-x-lg"></i>
+                </a>
+            }
+        </form>
+    </div>
+
+    <table class="admin-table">
+        <thead>
+            <tr>
+                <th style="width: 50px;">#</th>
+                <th>User</th>
+                <th>Role</th>
+                <th style="width: 120px;">Account Type</th>
+                <th style="width: 120px;">Status</th>
+                <th style="width: 150px;">Last Login</th>
+                <th style="width: 130px;">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (!Model.Any())
+            {
+                <tr>
+                    <td colspan="7" class="text-center py-5">
+                        <div class="empty-state">
+                            <i class="bi bi-people" style="font-size: 3rem; color: var(--ml-text-muted);"></i>
+                            <h5 class="mt-3">No users found</h5>
+                        </div>
+                    </td>
+                </tr>
+            }
+            else
+            {
+                var index = (ViewBag.CurrentPage - 1) * 15;
+                @foreach (var user in Model)
+                {
+                    index++;
+                    <tr>
+                        <td>@index</td>
+                        <td>
+                            <div class="cell-title">
+                                <img src="@(user.AvatarUrl ?? "/uploads/avatars/default.jpg")" alt="@user.DisplayName" 
+                                     class="rounded-circle" style="width: 40px; height: 40px;" />
+                                <div>
+                                    <div class="title-text">@(user.DisplayName ?? "No Name")</div>
+                                    <div class="subtitle-text">@user.Email</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            @foreach (var role in user.Roles)
+                            {
+                                <span class="badge @(role == "Admin" ? "bg-danger" : "bg-secondary")">@role</span>
+                            }
+                        </td>
+                        <td>
+                            <button type="button" class="status-badge @(user.IsPremium ? "verified" : "inactive")"
+                                    onclick="togglePremium('@user.Id', this)"
+                                    @(user.Roles.Contains("Admin") ? "disabled" : "")>
+                                @if (user.IsPremium)
+                                {
+                                    <i class="bi bi-star-fill"></i>
+                                    <span>Premium</span>
+                                }
+                                else
+                                {
+                                    <span>Free</span>
+                                }
+                            </button>
+                        </td>
+                        <td>
+                            <button type="button" class="status-badge @(user.IsActive ? "active" : "inactive")"
+                                    onclick="toggleStatus('@user.Id', this)"
+                                    @(user.Roles.Contains("Admin") ? "disabled" : "")>
+                                @if (user.IsActive)
+                                {
+                                    <i class="bi bi-check-circle-fill"></i>
+                                    <span>Active</span>
+                                }
+                                else
+                                {
+                                    <i class="bi bi-x-circle-fill"></i>
+                                    <span>Locked</span>
+                                }
+                            </button>
+                        </td>
+                        <td>
+                            @if (user.LastLoginAt.HasValue)
+                            {
+                                @user.LastLoginAt.Value.ToString("dd/MM/yyyy HH:mm")
+                            }
+                            else
+                            {
+                                <span class="text-muted">-</span>
+                            }
+                        </td>
+                        <td>
+                            <div class="action-buttons">
+                                <a asp-action="Details" asp-route-id="@user.Id" class="btn btn-icon btn-sm" title="Details">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                @if (!user.Roles.Contains("Admin"))
+                                {
+                                    <form asp-action="Delete" asp-route-id="@user.Id" method="post" class="d-inline"
+                                          onsubmit="return confirm('Are you sure you want to delete this user?');">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-icon btn-sm text-danger" title="Delete">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                }
+            }
+        </tbody>
+    </table>
+
+    @if (ViewBag.TotalPages > 1)
+    {
+        <div class="admin-table-footer">
+            <nav aria-label="Page navigation">
+                <ul class="pagination justify-content-center mb-0">
+                    <li class="page-item @(ViewBag.CurrentPage == 1 ? "disabled" : "")">
+                        <a class="page-link" asp-action="Index" 
+                           asp-route-page="@(ViewBag.CurrentPage - 1)"
+                           asp-route-search="@ViewBag.Search"
+                           asp-route-isPremium="@ViewBag.IsPremium">
+                            <i class="bi bi-chevron-left"></i>
+                        </a>
+                    </li>
+                    @for (int i = 1; i <= ViewBag.TotalPages; i++)
+                    {
+                        <li class="page-item @(i == ViewBag.CurrentPage ? "active" : "")">
+                            <a class="page-link" asp-action="Index" 
+                               asp-route-page="@i"
+                               asp-route-search="@ViewBag.Search"
+                               asp-route-isPremium="@ViewBag.IsPremium">@i</a>
+                        </li>
+                    }
+                    <li class="page-item @(ViewBag.CurrentPage == ViewBag.TotalPages ? "disabled" : "")">
+                        <a class="page-link" asp-action="Index" 
+                           asp-route-page="@(ViewBag.CurrentPage + 1)"
+                           asp-route-search="@ViewBag.Search"
+                           asp-route-isPremium="@ViewBag.IsPremium">
+                            <i class="bi bi-chevron-right"></i>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <script>
+        function toggleStatus(id, button) {
+            fetch(`/Admin/Users/ToggleStatus?id=${id}`, {
+                method: 'POST',
+                headers: {
+                    'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || ''
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    if (data.isActive) {
+                        button.className = 'status-badge active';
+                        button.innerHTML = '<i class="bi bi-check-circle-fill"></i><span>Active</span>';
+                    } else {
+                        button.className = 'status-badge inactive';
+                        button.innerHTML = '<i class="bi bi-x-circle-fill"></i><span>Locked</span>';
+                    }
+                }
+            });
+        }
+
+        function togglePremium(id, button) {
+            fetch(`/Admin/Users/TogglePremium?id=${id}`, {
+                method: 'POST',
+                headers: {
+                    'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || ''
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    if (data.isPremium) {
+                        button.className = 'status-badge verified';
+                        button.innerHTML = '<i class="bi bi-star-fill"></i><span>Premium</span>';
+                    } else {
+                        button.className = 'status-badge inactive';
+                        button.innerHTML = '<span>Free</span>';
+                    }
+                }
+            });
+        }
+    </script>
+}

@@ -1,0 +1,389 @@
+﻿@model HomeViewModel
+@{
+    ViewData["Title"] = "Home";
+}
+
+<!-- Hero Banner Section -->
+<section class="hero-section">
+    <div class="hero-slider">
+        @if (Model.FeaturedSongs.Any())
+        {
+            @foreach (var song in Model.FeaturedSongs.Take(5))
+            {
+                <div class="hero-slide" style="background-image: url('@(song.CoverImageUrl ?? "/uploads/covers/default-song.jpg")');">
+                    <div class="hero-content">
+                        <span class="hero-badge">
+                            <i class="bi bi-star-fill"></i> Featured
+                        </span>
+                        <h1>@song.Title</h1>
+                        <p>@(song.Artist?.Name ?? "Unknown Artist")</p>
+                        <div class="hero-actions">
+                            <button class="btn btn-primary btn-lg" onclick="playSong(@song.Id)">
+                                <i class="bi bi-play-fill me-2"></i>Play Now
+                            </button>
+                            <button class="btn btn-outline-light btn-lg" onclick="addToPlaylist(@song.Id)">
+                                <i class="bi bi-plus-lg me-2"></i>Add to Playlist
+                            </button>
+                        </div>
+                        <div class="hero-stats">
+                            <span><i class="bi bi-play-circle"></i> @song.PlayCount.ToString("N0") plays</span>
+                            <span><i class="bi bi-heart"></i> @song.LikeCount.ToString("N0") likes</span>
+                        </div>
+                    </div>
+                    <div class="hero-overlay"></div>
+                </div>
+            }
+        }
+        else
+        {
+            <div class="hero-slide hero-slide-default">
+                <div class="hero-content">
+                    <h1>Welcome to MusicListen</h1>
+                    <p>Explore the unlimited world of music</p>
+                    <a asp-controller="Songs" asp-action="Index" class="btn btn-primary btn-lg">
+                        <i class="bi bi-music-note-list me-2"></i>Explore Now
+                    </a>
+                </div>
+                <div class="hero-overlay"></div>
+            </div>
+        }
+    </div>
+    <div class="hero-nav">
+        <button class="hero-nav-btn prev"><i class="bi bi-chevron-left"></i></button>
+        <div class="hero-dots"></div>
+        <button class="hero-nav-btn next"><i class="bi bi-chevron-right"></i></button>
+    </div>
+</section>
+
+<!-- Quick Actions -->
+<section class="quick-actions">
+    <a asp-controller="Songs" asp-action="Index" class="quick-action-item">
+        <div class="quick-action-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+            <i class="bi bi-music-note-list"></i>
+        </div>
+        <span>Songs</span>
+    </a>
+    <a asp-controller="Albums" asp-action="Index" class="quick-action-item">
+        <div class="quick-action-icon" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+            <i class="bi bi-disc-fill"></i>
+        </div>
+        <span>Albums</span>
+    </a>
+    <a asp-controller="Artists" asp-action="Index" class="quick-action-item">
+        <div class="quick-action-icon" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+            <i class="bi bi-person-fill"></i>
+        </div>
+        <span>Artists</span>
+    </a>
+    <a asp-controller="Playlists" asp-action="Index" class="quick-action-item">
+        <div class="quick-action-icon" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
+            <i class="bi bi-collection-play-fill"></i>
+        </div>
+        <span>Playlists</span>
+    </a>
+    @if (User.Identity?.IsAuthenticated == true)
+    {
+        <a asp-controller="Profile" asp-action="Favorites" class="quick-action-item">
+            <div class="quick-action-icon" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
+                <i class="bi bi-heart-fill"></i>
+            </div>
+            <span>Favorites</span>
+        </a>
+    }
+</section>
+
+<!-- Trending Songs -->
+@if (Model.TrendingSongs.Any())
+{
+    <section class="section">
+        <div class="section-header">
+            <div>
+                <h2><i class="bi bi-fire text-danger me-2"></i>Trending</h2>
+                <p class="section-subtitle">Most played songs</p>
+            </div>
+            <a asp-controller="Songs" asp-action="Index" asp-route-sort="trending" class="btn btn-outline-primary btn-sm">
+                View All <i class="bi bi-arrow-right ms-1"></i>
+            </a>
+        </div>
+        <div class="songs-grid">
+            @foreach (var song in Model.TrendingSongs)
+            {
+                <div class="song-card" data-song-id="@song.Id">
+                    <div class="song-card-cover">
+                        <img src="@(song.CoverImageUrl ?? "/images/default-song.svg")" alt="@song.Title" loading="lazy" onerror="this.src='/images/default-song.svg';" />
+                        <div class="song-card-overlay">
+                            <button class="play-btn" onclick="playSong(@song.Id)">
+                                <i class="bi bi-play-fill"></i>
+                            </button>
+                        </div>
+                        @if (song.IsFeatured)
+                        {
+                            <span class="song-badge featured">
+                                <i class="bi bi-star-fill"></i>
+                            </span>
+                        }
+                    </div>
+                    <div class="song-card-info">
+                        <h4 class="song-title">
+                            <a asp-controller="Songs" asp-action="Details" asp-route-id="@song.Id">@song.Title</a>
+                        </h4>
+                        <p class="song-artist">
+                            @if (song.Artist != null)
+                            {
+                                <a asp-controller="Artists" asp-action="Details" asp-route-id="@song.ArtistId">@song.Artist.Name</a>
+                            }
+                            else
+                            {
+                                <span>Unknown Artist</span>
+                            }
+                        </p>
+                        <div class="song-meta">
+                            <span><i class="bi bi-play-circle"></i> @FormatNumber(song.PlayCount)</span>
+                            <span><i class="bi bi-clock"></i> @FormatDuration(song.Duration)</span>
+                        </div>
+                    </div>
+                    <div class="song-card-actions">
+                        <button class="btn-icon" onclick="toggleLike(@song.Id)" title="Favorite">
+                            <i class="bi bi-heart"></i>
+                        </button>
+                        <button class="btn-icon" onclick="addToPlaylist(@song.Id)" title="Add to playlist">
+                            <i class="bi bi-plus-lg"></i>
+                        </button>
+                        <div class="dropdown">
+                            <button class="btn-icon" data-bs-toggle="dropdown" title="More">
+                                <i class="bi bi-three-dots"></i>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end">
+                                <li><a class="dropdown-item" href="#" onclick="playSong(@song.Id)"><i class="bi bi-play"></i> Play</a></li>
+                                <li><a class="dropdown-item" href="#" onclick="playNext(@song.Id)"><i class="bi bi-skip-end"></i> Play Next</a></li>
+                                <li><a class="dropdown-item" href="#" onclick="addToQueue(@song.Id)"><i class="bi bi-list-ul"></i> Add to Queue</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" asp-controller="Songs" asp-action="Details" asp-route-id="@song.Id"><i class="bi bi-info-circle"></i> Details</a></li>
+                                @if (song.Artist != null)
+                                {
+                                    <li><a class="dropdown-item" asp-controller="Artists" asp-action="Details" asp-route-id="@song.ArtistId"><i class="bi bi-person"></i> View Artist</a></li>
+                                }
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </section>
+}
+
+<!-- New Releases -->
+@if (Model.NewSongs.Any())
+{
+    <section class="section">
+        <div class="section-header">
+            <div>
+                <h2><i class="bi bi-stars text-warning me-2"></i>New Releases</h2>
+                <p class="section-subtitle">Latest songs</p>
+            </div>
+            <a asp-controller="Songs" asp-action="Index" asp-route-sort="newest" class="btn btn-outline-primary btn-sm">
+                View All <i class="bi bi-arrow-right ms-1"></i>
+            </a>
+        </div>
+        <div class="songs-list">
+            @{ var index = 0; }
+            @foreach (var song in Model.NewSongs.Take(10))
+            {
+                index++;
+                <div class="song-list-item" data-song-id="@song.Id">
+                    <div class="song-rank">@index</div>
+                    <div class="song-cover">
+                        <img src="@(song.CoverImageUrl ?? "/uploads/covers/default-song.jpg")" alt="@song.Title" />
+                        <button class="play-btn-sm" onclick="playSong(@song.Id)">
+                            <i class="bi bi-play-fill"></i>
+                        </button>
+                    </div>
+                    <div class="song-info">
+                        <h4><a asp-controller="Songs" asp-action="Details" asp-route-id="@song.Id">@song.Title</a></h4>
+                        <p>
+                            @if (song.Artist != null)
+                            {
+                                <a asp-controller="Artists" asp-action="Details" asp-route-id="@song.ArtistId">@song.Artist.Name</a>
+                            }
+                        </p>
+                    </div>
+                    <div class="song-stats d-none d-md-block">
+                        <span class="text-muted">@(song.ReleaseDate?.ToString("dd/MM/yyyy") ?? song.CreatedAt.ToString("dd/MM/yyyy"))</span>
+                    </div>
+                    <div class="song-duration">@FormatDuration(song.Duration)</div>
+                    <div class="song-actions">
+                        <button class="btn-icon" onclick="toggleLike(@song.Id)"><i class="bi bi-heart"></i></button>
+                        <button class="btn-icon" onclick="addToPlaylist(@song.Id)"><i class="bi bi-plus-lg"></i></button>
+                    </div>
+                </div>
+            }
+        </div>
+    </section>
+}
+
+<!-- Popular Albums -->
+@if (Model.PopularAlbums.Any())
+{
+    <section class="section">
+        <div class="section-header">
+            <div>
+                <h2><i class="bi bi-disc-fill text-info me-2"></i>Popular Albums</h2>
+                <p class="section-subtitle">Most loved albums</p>
+            </div>
+            <a asp-controller="Albums" asp-action="Index" class="btn btn-outline-primary btn-sm">
+                View All <i class="bi bi-arrow-right ms-1"></i>
+            </a>
+        </div>
+        <div class="albums-grid">
+            @foreach (var album in Model.PopularAlbums)
+            {
+                <a asp-controller="Albums" asp-action="Details" asp-route-id="@album.Id" class="album-card">
+                    <div class="album-cover">
+                        <img src="@(album.CoverImageUrl ?? "/uploads/albums/default-album.jpg")" alt="@album.Title" loading="lazy" />
+                        <div class="album-overlay">
+                            <button class="play-btn" onclick="event.preventDefault(); playAlbum(@album.Id);">
+                                <i class="bi bi-play-fill"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="album-info">
+                        <h4>@album.Title</h4>
+                        <p>@(album.Artist?.Name ?? "Various Artists")</p>
+                        <span class="album-meta">@album.Songs?.Count() songs</span>
+                    </div>
+                </a>
+            }
+        </div>
+    </section>
+}
+
+<!-- Top Artists -->
+@if (Model.TopArtists.Any())
+{
+    <section class="section">
+        <div class="section-header">
+            <div>
+                <h2><i class="bi bi-person-heart text-primary me-2"></i>Top Artists</h2>
+                <p class="section-subtitle">Most loved artists</p>
+            </div>
+            <a asp-controller="Artists" asp-action="Index" class="btn btn-outline-primary btn-sm">
+                View All <i class="bi bi-arrow-right ms-1"></i>
+            </a>
+        </div>
+        <div class="artists-grid">
+            @foreach (var artist in Model.TopArtists)
+            {
+                <a asp-controller="Artists" asp-action="Details" asp-route-id="@artist.Id" class="artist-card">
+                    <div class="artist-avatar">
+                        <img src="@(artist.ImageUrl ?? "/uploads/artists/default-artist.jpg")" alt="@artist.Name" loading="lazy" />
+                        @if (artist.IsVerified)
+                        {
+                            <span class="verified-badge" title="Verified Artist">
+                                <i class="bi bi-patch-check-fill"></i>
+                            </span>
+                        }
+                    </div>
+                    <h4>@artist.Name</h4>
+                    <p>@artist.Songs?.Count() songs</p>
+                </a>
+            }
+        </div>
+    </section>
+}
+
+<!-- Genres -->
+@if (Model.Genres.Any())
+{
+    <section class="section">
+        <div class="section-header">
+            <div>
+                <h2><i class="bi bi-grid-fill text-success me-2"></i>Genres</h2>
+                <p class="section-subtitle">Explore by your favorite genre</p>
+            </div>
+        </div>
+        <div class="genres-grid">
+            @{
+                var colors = new[] { "#667eea", "#f093fb", "#4facfe", "#43e97b", "#fa709a", "#ff6b6b", "#feca57", "#48dbfb" };
+                var colorIndex = 0;
+            }
+            @foreach (var genre in Model.Genres)
+            {
+                var color = colors[colorIndex % colors.Length];
+                <a asp-controller="Songs" asp-action="Index" asp-route-genre="@genre.Id" class="genre-card" style="background: linear-gradient(135deg, @color 0%, @(color)99 100%);">
+                    <span class="genre-icon"><i class="bi bi-music-note-beamed"></i></span>
+                    <h4>@genre.Name</h4>
+                    <p>@genre.Songs?.Count(s => s.IsPublished) songs</p>
+                </a>
+                colorIndex++;
+            }
+        </div>
+    </section>
+}
+
+@section Scripts {
+    <script>
+        // Hero Slider
+        document.addEventListener('DOMContentLoaded', function() {
+            const slider = document.querySelector('.hero-slider');
+            const slides = document.querySelectorAll('.hero-slide');
+            const dotsContainer = document.querySelector('.hero-dots');
+            const prevBtn = document.querySelector('.hero-nav-btn.prev');
+            const nextBtn = document.querySelector('.hero-nav-btn.next');
+            
+            if (slides.length <= 1) {
+                document.querySelector('.hero-nav')?.remove();
+                return;
+            }
+            
+            let currentSlide = 0;
+            
+            // Create dots
+            slides.forEach((_, i) => {
+                const dot = document.createElement('button');
+                dot.classList.add('hero-dot');
+                if (i === 0) dot.classList.add('active');
+                dot.addEventListener('click', () => goToSlide(i));
+                dotsContainer.appendChild(dot);
+            });
+            
+            const dots = document.querySelectorAll('.hero-dot');
+            
+            function goToSlide(index) {
+                slides[currentSlide].classList.remove('active');
+                dots[currentSlide].classList.remove('active');
+                currentSlide = index;
+                if (currentSlide >= slides.length) currentSlide = 0;
+                if (currentSlide < 0) currentSlide = slides.length - 1;
+                slides[currentSlide].classList.add('active');
+                dots[currentSlide].classList.add('active');
+            }
+            
+            // Initialize first slide
+            slides[0].classList.add('active');
+            
+            // Navigation
+            prevBtn?.addEventListener('click', () => goToSlide(currentSlide - 1));
+            nextBtn?.addEventListener('click', () => goToSlide(currentSlide + 1));
+            
+            // Auto slide
+            setInterval(() => goToSlide(currentSlide + 1), 5000);
+        });
+    </script>
+}
+
+@functions {
+    string FormatDuration(int seconds)
+    {
+        var span = TimeSpan.FromSeconds(seconds);
+        return span.Hours > 0 
+            ? span.ToString(@"h\:mm\:ss") 
+            : span.ToString(@"m\:ss");
+    }
+    
+    string FormatNumber(int number)
+    {
+        if (number >= 1000000) return (number / 1000000.0).ToString("0.#") + "M";
+        if (number >= 1000) return (number / 1000.0).ToString("0.#") + "K";
+        return number.ToString();
+    }
+}

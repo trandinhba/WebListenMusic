@@ -1,0 +1,186 @@
+@model ApplicationUser
+@{
+    ViewData["Title"] = "Settings";
+}
+
+<div class="settings-page">
+    <h1>Settings</h1>
+
+    <div class="settings-section">
+        <h3><i class="bi bi-person me-2"></i>Account</h3>
+        <div class="settings-card">
+            <div class="settings-item">
+                <div>
+                    <strong>Email</strong>
+                    <p>@Model.Email</p>
+                </div>
+            </div>
+            <div class="settings-item">
+                <div>
+                    <strong>Password</strong>
+                    <p>••••••••</p>
+                </div>
+                <a asp-controller="Account" asp-action="ChangePassword" class="btn btn-outline-primary btn-sm">Change Password</a>
+            </div>
+            <div class="settings-item">
+                <div>
+                    <strong>Account Status</strong>
+                    <p>
+                        @if (Model.IsPremium)
+                        {
+                            <span class="badge bg-warning"><i class="bi bi-gem me-1"></i>Premium</span>
+                            if (Model.PremiumExpiryDate.HasValue)
+                            {
+                                <small class="text-muted ms-2">Expires: @Model.PremiumExpiryDate.Value.ToString("dd/MM/yyyy")</small>
+                            }
+                        }
+                        else
+                        {
+                            <span class="badge bg-secondary">Free</span>
+                        }
+                    </p>
+                </div>
+                @if (!Model.IsPremium)
+                {
+                    <button class="btn btn-warning btn-sm">
+                        <i class="bi bi-gem me-1"></i>Upgrade to Premium
+                    </button>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="settings-section">
+        <h3><i class="bi bi-bell me-2"></i>Notifications</h3>
+        <div class="settings-card">
+            <div class="settings-item">
+                <div>
+                    <strong>Email Notifications</strong>
+                    <p>Receive notifications about new songs and albums</p>
+                </div>
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" checked />
+                </div>
+            </div>
+            <div class="settings-item">
+                <div>
+                    <strong>Music Recommendations</strong>
+                    <p>Receive music suggestions based on your preferences</p>
+                </div>
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" checked />
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="settings-section">
+        <h3><i class="bi bi-shield-lock me-2"></i>Security & Privacy</h3>
+        <div class="settings-card">
+            <div class="settings-item">
+                <div>
+                    <strong>Public Profile</strong>
+                    <p>Allow others to view your public playlists</p>
+                </div>
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" checked />
+                </div>
+            </div>
+            <div class="settings-item">
+                <div>
+                    <strong>Listening History</strong>
+                    <p>Save your listening history</p>
+                </div>
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" checked />
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="settings-section danger-zone">
+        <h3><i class="bi bi-exclamation-triangle me-2"></i>Danger Zone</h3>
+        <div class="settings-card">
+            <div class="settings-item">
+                <div>
+                    <strong>Delete Account</strong>
+                    <p>Permanently delete your account and all data</p>
+                </div>
+                <button class="btn btn-outline-danger btn-sm" onclick="confirmDeleteAccount()">Delete Account</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .settings-page {
+        max-width: 800px;
+    }
+
+    .settings-page h1 {
+        margin-bottom: 32px;
+    }
+
+    .settings-section {
+        margin-bottom: 32px;
+    }
+
+    .settings-section h3 {
+        font-size: 1.125rem;
+        margin-bottom: 16px;
+        color: var(--ml-text-muted);
+    }
+
+    .settings-card {
+        background: var(--ml-surface);
+        border-radius: var(--ml-radius-lg);
+        overflow: hidden;
+    }
+
+    .settings-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 20px 24px;
+        border-bottom: 1px solid var(--ml-border);
+    }
+
+    .settings-item:last-child {
+        border-bottom: none;
+    }
+
+    .settings-item strong {
+        display: block;
+        margin-bottom: 4px;
+    }
+
+    .settings-item p {
+        margin: 0;
+        color: var(--ml-text-muted);
+        font-size: 0.875rem;
+    }
+
+    .danger-zone h3 {
+        color: var(--ml-danger);
+    }
+
+    .form-switch .form-check-input {
+        width: 48px;
+        height: 24px;
+    }
+
+    .form-switch .form-check-input:checked {
+        background-color: var(--ml-primary);
+        border-color: var(--ml-primary);
+    }
+</style>
+
+@section Scripts {
+    <script>
+        function confirmDeleteAccount() {
+            if (confirm('Are you sure you want to delete your account? This action cannot be undone!')) {
+                alert('Feature is under development');
+            }
+        }
+    </script>
+}
